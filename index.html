@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Penny Pincher">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#F7F1E0">
+<meta name="format-detection" content="telephone=no">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<title>Penny Pincher</title>
+<style>
+  :root{
+    --bg:#F7F1E0;
+    --bg-2:#EFE5C9;
+    --kraft:#FFFDF6;
+    --kraft-line:#E6DAB8;
+    --kraft-dark:#F0E6C8;
+    --kraft-dark-active:#E1D2A4;
+    --shu:#B7282E;
+    --shu-dark:#8F1F24;
+    --shu-soft:rgba(183,40,46,0.10);
+    --ink:#2A2620;
+    --ink-soft:#8a8172;
+    --brass:#9C7F3F;
+    --paper-text:#FBF7EC;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{ overscroll-behavior-y:none; height:100%; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+    overscroll-behavior-y:none;
+    -webkit-text-size-adjust:100%;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding-top:calc(var(--safe-t) + 10px);
+    padding-bottom:calc(var(--safe-b));
+  }
+
+  /* header / tabs */
+  header{
+    padding:2px 20px 14px;
+  }
+  .brand{
+    font-size:13px;
+    letter-spacing:0.14em;
+    color:var(--brass);
+    margin:0 0 10px;
+    font-weight:600;
+  }
+  .tabs{
+    display:flex;
+    gap:0;
+    border-bottom:1px solid rgba(169,143,82,0.35);
+  }
+  .tab{
+    flex:1;
+    text-align:center;
+    padding:10px 0 12px;
+    font-size:15px;
+    font-weight:600;
+    color:rgba(42,38,32,0.4);
+    background:none;
+    border:none;
+    position:relative;
+    cursor:pointer;
+  }
+  .tab.active{ color:var(--ink); }
+  .tab.active::after{
+    content:"";
+    position:absolute;
+    left:30%; right:30%; bottom:-1px;
+    height:2px;
+    background:var(--brass);
+    border-radius:2px;
+  }
+
+  main{ flex:1; display:flex; flex-direction:column; min-height:0; }
+  .view{ display:none; flex:1; flex-direction:column; min-height:0; }
+  .view.active{ display:flex; }
+
+  /* ---------- 入力画面 ---------- */
+  .paper{
+    margin:14px 16px 0;
+    background:
+      linear-gradient(var(--kraft-line) 1px, transparent 1px) 0 0/100% 28px,
+      linear-gradient(90deg, var(--kraft-line) 1px, transparent 1px) 0 0/28px 100%,
+      var(--kraft);
+    background-blend-mode: normal;
+    border-radius:14px 14px 4px 14px;
+    box-shadow:0 6px 18px rgba(154,130,60,0.18), 0 1px 0 rgba(0,0,0,0.04);
+    position:relative;
+    padding:22px 18px 16px;
+  }
+  .paper::before{
+    content:"";
+    position:absolute;
+    top:0; right:0;
+    width:0; height:0;
+    border-style:solid;
+    border-width:0 22px 22px 0;
+    border-color:transparent var(--bg) transparent transparent;
+    opacity:1;
+    border-radius:0 0 0 3px;
+  }
+  .amount-label{
+    font-size:12px;
+    color:var(--ink-soft);
+    letter-spacing:0.12em;
+    margin:0 0 2px;
+  }
+  .amount-row{
+    display:flex;
+    align-items:baseline;
+    gap:6px;
+    min-height:58px;
+  }
+  .yen-mark{
+    font-size:26px;
+    color:var(--shu);
+    font-weight:700;
+  }
+  #amountDisplay{
+    font-size:46px;
+    font-weight:700;
+    color:var(--shu);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:0.01em;
+    line-height:1.1;
+    word-break:break-all;
+  }
+  #amountDisplay.placeholder{ color:rgba(183,40,46,0.35); }
+
+  .numpad{
+    margin:16px 16px 0;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
+  }
+  .key{
+    background:var(--kraft-dark);
+    border:1px solid var(--kraft-line);
+    color:var(--ink);
+    font-size:24px;
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+    padding:16px 0;
+    border-radius:10px;
+    touch-action:manipulation;
+    transition:transform .06s ease, background .06s ease;
+  }
+  .key:active{ transform:scale(0.94); background:var(--kraft-dark-active); }
+  .key.func{ color:var(--shu); font-size:20px; }
+
+  .actions{
+    margin:20px 16px 8px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+  }
+  .stamp{
+    width:104px; height:104px;
+    border-radius:50%;
+    border:3px solid var(--shu);
+    background:var(--shu-soft);
+    color:var(--shu);
+    font-size:20px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .15s;
+  }
+  .stamp:active{ transform:scale(0.9); }
+  .stamp.disabled{
+    border-color:rgba(169,143,82,0.4);
+    color:rgba(169,143,82,0.5);
+    background:none;
+    pointer-events:none;
+  }
+  .stamp.stamped{
+    animation:stampHit .32s cubic-bezier(.34,1.56,.64,1);
+    background:var(--shu);
+    color:var(--paper-text);
+  }
+  @keyframes stampHit{
+    0%{ transform:scale(1); }
+    35%{ transform:scale(0.72); }
+    65%{ transform:scale(1.08); }
+    100%{ transform:scale(1); }
+  }
+
+  .undo-line{
+    min-height:20px;
+    font-size:13px;
+    color:rgba(42,38,32,0.6);
+    text-align:center;
+  }
+  .undo-line button{
+    background:none; border:none;
+    color:var(--brass);
+    font-size:13px;
+    font-weight:600;
+    text-decoration:underline;
+    padding:0 0 0 4px;
+  }
+
+  /* ---------- 記録画面 ---------- */
+  .record-view{ padding:14px 16px 24px; overflow-y:auto; }
+  .total-card{
+    background:var(--bg-2);
+    border:1px solid rgba(156,127,63,0.3);
+    border-radius:12px;
+    padding:14px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:16px;
+  }
+  .total-card .label{ font-size:13px; color:rgba(42,38,32,0.6); }
+  .total-card .num{ font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .total-card .count{ font-size:12px; color:rgba(42,38,32,0.45); margin-left:6px; }
+
+  .date-group{ margin-bottom:18px; }
+  .date-heading{
+    font-size:13px;
+    color:var(--brass);
+    font-weight:600;
+    letter-spacing:0.04em;
+    margin:0 0 6px 2px;
+  }
+  .entry-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:var(--kraft);
+    border:1px solid var(--kraft-line);
+    color:var(--ink);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:6px;
+    cursor:pointer;
+    transition:transform .05s ease;
+  }
+  .entry-row:active{ transform:scale(0.985); }
+  .entry-time{ font-size:13px; color:var(--ink-soft); }
+  .entry-amount{ font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--shu); }
+
+  .empty-state{
+    text-align:center;
+    color:rgba(42,38,32,0.5);
+    font-size:14px;
+    padding:60px 20px;
+    line-height:1.7;
+  }
+
+  /* ---------- 編集モーダル ---------- */
+  .overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:flex-end;
+    justify-content:center;
+    z-index:50;
+  }
+  .overlay.active{ display:flex; }
+  .modal{
+    width:100%;
+    max-width:480px;
+    background:var(--kraft);
+    color:var(--ink);
+    border-radius:18px 18px 0 0;
+    padding:20px 20px calc(20px + var(--safe-b));
+  }
+  .modal h3{ margin:0 0 16px; font-size:16px; color:var(--ink); }
+  .field{ margin-bottom:14px; }
+  .field label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; }
+  .field input{
+    width:100%;
+    font-size:20px;
+    font-variant-numeric:tabular-nums;
+    padding:10px 12px;
+    border:1px solid var(--kraft-line);
+    border-radius:8px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .modal-actions button{
+    flex:1;
+    padding:13px 0;
+    border-radius:9px;
+    font-size:15px;
+    font-weight:600;
+    border:none;
+  }
+  .btn-cancel{ background:var(--kraft-dark); color:var(--ink); }
+  .btn-delete{ background:none; color:var(--shu); border:1px solid var(--shu) !important; }
+  .btn-save{ background:var(--shu); color:var(--paper-text); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <p class="brand">Penny Pincher</p>
+    <div class="tabs">
+      <button class="tab active" data-view="input">入力</button>
+      <button class="tab" data-view="record">記録</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 入力画面 -->
+    <section class="view active" id="view-input">
+      <div class="paper">
+        <p class="amount-label">金額</p>
+        <div class="amount-row">
+          <span class="yen-mark">¥</span>
+          <span id="amountDisplay" class="placeholder">0</span>
+        </div>
+      </div>
+
+      <div class="numpad">
+        <button class="key" data-k="7">7</button>
+        <button class="key" data-k="8">8</button>
+        <button class="key" data-k="9">9</button>
+        <button class="key" data-k="4">4</button>
+        <button class="key" data-k="5">5</button>
+        <button class="key" data-k="6">6</button>
+        <button class="key" data-k="1">1</button>
+        <button class="key" data-k="2">2</button>
+        <button class="key" data-k="3">3</button>
+        <button class="key func" data-k="00">00</button>
+        <button class="key" data-k="0">0</button>
+        <button class="key func" data-k="back">⌫</button>
+      </div>
+
+      <div class="actions">
+        <button class="stamp disabled" id="saveBtn">保存</button>
+        <div class="undo-line" id="undoLine"></div>
+      </div>
+    </section>
+
+    <!-- 記録画面 -->
+    <section class="view" id="view-record">
+      <div class="record-view" id="recordView"></div>
+    </section>
+  </main>
+</div>
+
+<!-- 編集モーダル -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>記録を編集</h3>
+    <div class="field">
+      <label>金額（円）</label>
+      <input type="number" id="editAmount" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>日時</label>
+      <input type="datetime-local" id="editDatetime">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="deleteBtn">削除</button>
+      <button class="btn-cancel" id="cancelBtn">キャンセル</button>
+      <button class="btn-save" id="saveEditBtn">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const STORAGE_KEY = "kakeibo_entries_v1";
+  let entries = loadEntries();
+  let currentAmountStr = "";
+  let editingId = null;
+
+  function loadEntries(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){ return []; }
+  }
+  function saveEntries(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+    catch(e){ console.error("保存に失敗しました", e); }
+  }
+  function formatYen(n){ return "¥" + Number(n).toLocaleString("ja-JP"); }
+  function formatTime(ts){
+    const d = new Date(ts);
+    return d.getHours().toString().padStart(2,"0") + ":" + d.getMinutes().toString().padStart(2,"0");
+  }
+  function formatDateGroup(ts){
+    const d = new Date(ts);
+    const w = ["日","月","火","水","木","金","土"][d.getDay()];
+    return (d.getMonth()+1) + "月" + d.getDate() + "日(" + w + ")";
+  }
+  function dateKey(ts){
+    const d = new Date(ts);
+    return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
+  }
+  function toLocalInputValue(ts){
+    const d = new Date(ts);
+    const pad = n => n.toString().padStart(2,"0");
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+  }
+
+  /* ---------- タブ切り替え ---------- */
+  const tabs = document.querySelectorAll(".tab");
+  const views = document.querySelectorAll(".view");
+  tabs.forEach(tab=>{
+    tab.addEventListener("click", ()=>{
+      tabs.forEach(t=>t.classList.remove("active"));
+      views.forEach(v=>v.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("view-" + tab.dataset.view).classList.add("active");
+      if(tab.dataset.view === "record") renderRecordView();
+    });
+  });
+
+  /* ---------- テンキー ---------- */
+  const amountDisplay = document.getElementById("amountDisplay");
+  const saveBtn = document.getElementById("saveBtn");
+  const undoLine = document.getElementById("undoLine");
+
+  document.querySelectorAll(".key").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const k = btn.dataset.k;
+      if(k === "back"){
+        currentAmountStr = currentAmountStr.slice(0, -1);
+      } else {
+        if(currentAmountStr === "0") currentAmountStr = "";
+        if(currentAmountStr.length < 9) currentAmountStr += k;
+      }
+      renderAmount();
+    });
+  });
+
+  function renderAmount(){
+    const num = currentAmountStr === "" ? 0 : parseInt(currentAmountStr, 10);
+    amountDisplay.textContent = num.toLocaleString("ja-JP");
+    amountDisplay.classList.toggle("placeholder", num === 0);
+    saveBtn.classList.toggle("disabled", num === 0);
+  }
+
+  saveBtn.addEventListener("click", ()=>{
+    const num = parseInt(currentAmountStr || "0", 10);
+    if(!num) return;
+    const entry = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), amount:num, ts: Date.now() };
+    entries.push(entry);
+    saveEntries();
+
+    saveBtn.classList.add("stamped");
+    if(navigator.vibrate) { try{ navigator.vibrate(12); }catch(e){} }
+    setTimeout(()=> saveBtn.classList.remove("stamped"), 340);
+
+    currentAmountStr = "";
+    renderAmount();
+    renderUndoLine();
+  });
+
+  function renderUndoLine(){
+    if(entries.length === 0){ undoLine.innerHTML = ""; return; }
+    const last = entries[entries.length - 1];
+    undoLine.innerHTML = formatYen(last.amount) + "を保存しました " +
+      '<button id="undoBtn">取り消す</button>';
+    document.getElementById("undoBtn").addEventListener("click", ()=>{
+      entries = entries.filter(e => e.id !== last.id);
+      saveEntries();
+      renderUndoLine();
+    });
+  }
+
+  /* ---------- 記録画面 ---------- */
+  const recordView = document.getElementById("recordView");
+
+  function renderRecordView(){
+    if(entries.length === 0){
+      recordView.innerHTML = '<div class="empty-state">まだ記録がありません。<br>「入力」タブから金額を打って保存すると、ここに並びます。</div>';
+      return;
+    }
+    const sorted = [...entries].sort((a,b)=> b.ts - a.ts);
+    const total = entries.reduce((s,e)=> s + e.amount, 0);
+
+    let html = '<div class="total-card"><span class="label">合計</span>' +
+      '<span><span class="num">' + formatYen(total) + '</span><span class="count">（' + entries.length + '件）</span></span></div>';
+
+    const groups = [];
+    let currentKey = null, currentGroup = null;
+    sorted.forEach(e=>{
+      const key = dateKey(e.ts);
+      if(key !== currentKey){
+        currentKey = key;
+        currentGroup = { label: formatDateGroup(e.ts), items: [] };
+        groups.push(currentGroup);
+      }
+      currentGroup.items.push(e);
+    });
+
+    groups.forEach(g=>{
+      html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
+      g.items.forEach(e=>{
+        html += '<div class="entry-row" data-id="' + e.id + '">' +
+          '<span class="entry-time">' + formatTime(e.ts) + '</span>' +
+          '<span class="entry-amount">' + formatYen(e.amount) + '</span></div>';
+      });
+      html += '</div>';
+    });
+
+    recordView.innerHTML = html;
+    recordView.querySelectorAll(".entry-row").forEach(row=>{
+      row.addEventListener("click", ()=> openEditModal(row.dataset.id));
+    });
+  }
+
+  /* ---------- 編集モーダル ---------- */
+  const overlay = document.getElementById("overlay");
+  const editAmount = document.getElementById("editAmount");
+  const editDatetime = document.getElementById("editDatetime");
+
+  function openEditModal(id){
+    const entry = entries.find(e=> e.id === id);
+    if(!entry) return;
+    editingId = id;
+    editAmount.value = entry.amount;
+    editDatetime.value = toLocalInputValue(entry.ts);
+    overlay.classList.add("active");
+  }
+  function closeEditModal(){
+    overlay.classList.remove("active");
+    editingId = null;
+  }
+
+  document.getElementById("cancelBtn").addEventListener("click", closeEditModal);
+  overlay.addEventListener("click", (e)=>{ if(e.target === overlay) closeEditModal(); });
+
+  document.getElementById("saveEditBtn").addEventListener("click", ()=>{
+    if(!editingId) return;
+    const entry = entries.find(e=> e.id === editingId);
+    if(!entry) return;
+    const newAmount = parseInt(editAmount.value, 10);
+    if(newAmount > 0) entry.amount = newAmount;
+    const newTs = new Date(editDatetime.value).getTime();
+    if(!isNaN(newTs)) entry.ts = newTs;
+    saveEntries();
+    closeEditModal();
+    renderRecordView();
+    renderUndoLine();
+  });
+
+  document.getElementById("deleteBtn").addEventListener("click", ()=>{
+    if(!editingId) return;
+    entries = entries.filter(e=> e.id !== editingId);
+    saveEntries();
+    closeEditModal();
+    renderRecordView();
+    renderUndoLine();
+  });
+
+  /* ---------- 初期化 ---------- */
+  renderAmount();
+  renderUndoLine();
+})();
+</script>
+</body>
+</html>
