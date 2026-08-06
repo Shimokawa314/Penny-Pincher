@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Penny Pincher">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#F7F1E0">
+<meta name="theme-color" content="#FDF3F7">
 <meta name="format-detection" content="telephone=no">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -15,19 +15,19 @@
 <title>Penny Pincher</title>
 <style>
   :root{
-    --bg:#F7F1E0;
-    --bg-2:#EFE5C9;
-    --kraft:#FFFDF6;
-    --kraft-line:#E6DAB8;
-    --kraft-dark:#F0E6C8;
-    --kraft-dark-active:#E1D2A4;
-    --shu:#B7282E;
-    --shu-dark:#8F1F24;
-    --shu-soft:rgba(183,40,46,0.10);
-    --ink:#2A2620;
-    --ink-soft:#8a8172;
-    --brass:#9C7F3F;
-    --paper-text:#FBF7EC;
+    --bg:#FDF3F7;
+    --bg-2:#F8E6EE;
+    --kraft:#FFFFFF;
+    --kraft-line:#F3D9E6;
+    --kraft-dark:#FCEAF1;
+    --kraft-dark-active:#F6D3E3;
+    --shu:#FF8FAB;
+    --shu-dark:#E96F92;
+    --shu-soft:rgba(255,143,171,0.16);
+    --ink:#5B4757;
+    --ink-soft:#B39AAE;
+    --brass:#B497D6;
+    --paper-text:#FFFFFF;
     --safe-b: env(safe-area-inset-bottom, 0px);
     --safe-t: env(safe-area-inset-top, 0px);
   }
@@ -65,7 +65,7 @@
   .tabs{
     display:flex;
     gap:0;
-    border-bottom:1px solid rgba(169,143,82,0.35);
+    border-bottom:1px solid rgba(180,151,214,0.35);
   }
   .tab{
     flex:1;
@@ -73,7 +73,7 @@
     padding:10px 0 12px;
     font-size:15px;
     font-weight:600;
-    color:rgba(42,38,32,0.4);
+    color:rgba(91,71,87,0.4);
     background:none;
     border:none;
     position:relative;
@@ -101,7 +101,7 @@
       linear-gradient(90deg, var(--kraft-line) 1px, transparent 1px) 0 0/28px 100%,
       var(--kraft);
     background-blend-mode: normal;
-    border-radius:14px 14px 4px 14px;
+    border-radius:22px 22px 8px 22px;
     box-shadow:0 6px 18px rgba(154,130,60,0.18), 0 1px 0 rgba(0,0,0,0.04);
     position:relative;
     padding:22px 18px 16px;
@@ -143,7 +143,7 @@
     line-height:1.1;
     word-break:break-all;
   }
-  #amountDisplay.placeholder{ color:rgba(183,40,46,0.35); }
+  #amountDisplay.placeholder{ color:rgba(255,143,171,0.35); }
 
   .numpad{
     margin:16px 16px 0;
@@ -159,7 +159,7 @@
     font-weight:600;
     font-variant-numeric:tabular-nums;
     padding:16px 0;
-    border-radius:10px;
+    border-radius:16px;
     touch-action:manipulation;
     transition:transform .06s ease, background .06s ease;
   }
@@ -188,8 +188,8 @@
   }
   .stamp:active{ transform:scale(0.9); }
   .stamp.disabled{
-    border-color:rgba(169,143,82,0.4);
-    color:rgba(169,143,82,0.5);
+    border-color:rgba(180,151,214,0.4);
+    color:rgba(180,151,214,0.5);
     background:none;
     pointer-events:none;
   }
@@ -208,7 +208,7 @@
   .undo-line{
     min-height:20px;
     font-size:13px;
-    color:rgba(42,38,32,0.6);
+    color:rgba(91,71,87,0.6);
     text-align:center;
   }
   .undo-line button{
@@ -224,17 +224,17 @@
   .record-view{ padding:14px 16px 24px; overflow-y:auto; }
   .total-card{
     background:var(--bg-2);
-    border:1px solid rgba(156,127,63,0.3);
-    border-radius:12px;
+    border:1px solid rgba(180,151,214,0.3);
+    border-radius:16px;
     padding:14px 16px;
     display:flex;
     justify-content:space-between;
     align-items:baseline;
     margin-bottom:16px;
   }
-  .total-card .label{ font-size:13px; color:rgba(42,38,32,0.6); }
+  .total-card .label{ font-size:13px; color:rgba(91,71,87,0.6); }
   .total-card .num{ font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink); }
-  .total-card .count{ font-size:12px; color:rgba(42,38,32,0.45); margin-left:6px; }
+  .total-card .count{ font-size:12px; color:rgba(91,71,87,0.45); margin-left:6px; }
 
   .date-group{ margin-bottom:18px; }
   .date-heading{
@@ -251,7 +251,7 @@
     background:var(--kraft);
     border:1px solid var(--kraft-line);
     color:var(--ink);
-    border-radius:8px;
+    border-radius:14px;
     padding:12px 14px;
     margin-bottom:6px;
     cursor:pointer;
@@ -298,13 +298,21 @@
 
   /* ---------- ジャンル管理モーダル ---------- */
   .genre-row{
-    display:flex;
-    align-items:center;
-    gap:10px;
     padding:8px 0;
     border-bottom:1px solid var(--kraft-line);
   }
-  .genre-row .dot{ width:12px; height:12px; border-radius:50%; flex:0 0 auto; }
+  .genre-row-main{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .dot-btn{
+    width:20px; height:20px;
+    border-radius:50%;
+    flex:0 0 auto;
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--kraft-line);
+  }
   .genre-row input{
     flex:1;
     border:none;
@@ -316,11 +324,17 @@
   .genre-row input:focus{ outline:none; border-bottom:1px solid var(--brass); }
   .genre-del{
     background:none; border:none;
-    color:var(--shu);
+    color:var(--shu-dark);
     font-size:18px;
     line-height:1;
     padding:4px 6px;
   }
+  .genre-color-picker{
+    display:flex; flex-wrap:wrap; gap:8px;
+    padding:10px 0 6px 30px;
+  }
+  .genre-color-picker .swatch{ width:22px; height:22px; }
+  .genre-color-picker .swatch[aria-current="true"]{ border-color:var(--ink); }
   .genre-add-row{ margin-top:14px; }
   .swatches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
   .swatch{
@@ -330,9 +344,79 @@
   }
   .swatch.selected{ border-color:var(--ink); }
 
+  /* ---------- 分析タブ ---------- */
+  .analysis-view{ padding:14px 16px 24px; overflow-y:auto; }
+  .segmented{
+    display:flex;
+    background:var(--bg-2);
+    border-radius:16px;
+    padding:3px;
+    gap:2px;
+    margin-bottom:16px;
+  }
+  .segmented button{
+    flex:1;
+    padding:9px 0;
+    border-radius:8px;
+    border:none;
+    background:none;
+    font-size:13px;
+    font-weight:600;
+    color:rgba(91,71,87,0.55);
+  }
+  .segmented button.active{
+    background:var(--kraft);
+    color:var(--ink);
+    box-shadow:0 1px 3px rgba(0,0,0,0.1);
+  }
+  .stat-row{ display:flex; gap:10px; margin-bottom:20px; }
+  .stat-card{
+    flex:1;
+    background:var(--bg-2);
+    border:1px solid rgba(180,151,214,0.3);
+    border-radius:16px;
+    padding:12px 14px;
+  }
+  .stat-card .label{ display:block; font-size:12px; color:rgba(91,71,87,0.6); margin-bottom:4px; }
+  .stat-card .num{ font-size:21px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--ink); }
+  .cat-section-title{ font-size:13px; color:var(--brass); font-weight:600; margin:0 0 10px 2px; }
+
+  .pie-outer{
+    position:relative;
+    width:190px; height:190px;
+    margin:6px auto 22px;
+  }
+  .pie{ width:100%; height:100%; border-radius:50%; }
+  .pie-center{
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    width:62%; height:62%;
+    border-radius:50%;
+    background:var(--bg);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+  }
+  .pie-center .label{ font-size:11px; color:var(--ink-soft); margin-bottom:2px; }
+  .pie-center .num{ font-size:19px; font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+  .legend-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 2px;
+    border-bottom:1px solid var(--kraft-line);
+  }
+  .legend-row:last-child{ border-bottom:none; }
+  .cat-name{ display:flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--ink); }
+  .cat-name .dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
+  .cat-amount{ font-size:13px; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
+  .cat-amount .pct{ color:var(--ink); font-weight:700; margin-left:4px; }
+
+
   .empty-state{
     text-align:center;
-    color:rgba(42,38,32,0.5);
+    color:rgba(91,71,87,0.5);
     font-size:14px;
     padding:60px 20px;
     line-height:1.7;
@@ -353,7 +437,7 @@
     max-width:480px;
     background:var(--kraft);
     color:var(--ink);
-    border-radius:18px 18px 0 0;
+    border-radius:26px 26px 0 0;
     padding:20px 20px calc(20px + var(--safe-b));
   }
   .modal h3{ margin:0 0 16px; font-size:16px; color:var(--ink); }
@@ -365,7 +449,7 @@
     font-variant-numeric:tabular-nums;
     padding:10px 12px;
     border:1px solid var(--kraft-line);
-    border-radius:8px;
+    border-radius:12px;
     background:#fff;
     color:var(--ink);
   }
@@ -373,7 +457,7 @@
   .modal-actions button{
     flex:1;
     padding:13px 0;
-    border-radius:9px;
+    border-radius:14px;
     font-size:15px;
     font-weight:600;
     border:none;
@@ -390,6 +474,7 @@
     <div class="tabs">
       <button class="tab active" data-view="input">入力</button>
       <button class="tab" data-view="record">記録</button>
+      <button class="tab" data-view="analysis">分析</button>
     </div>
   </header>
 
@@ -432,6 +517,17 @@
       </div>
       <div class="record-view" id="recordView"></div>
     </section>
+
+    <!-- 分析画面 -->
+    <section class="view" id="view-analysis">
+      <div class="analysis-view" id="analysisView">
+        <div class="segmented" id="periodSwitch">
+          <button data-period="month" class="active">今月</button>
+          <button data-period="lastMonth">先月</button>
+        </div>
+        <div id="analysisBody"></div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -466,7 +562,7 @@
     <div id="genreList"></div>
     <div class="genre-add-row">
       <div class="swatches" id="colorSwatches"></div>
-      <input type="text" id="newGenreName" placeholder="新しいジャンル名" style="width:100%; font-size:15px; padding:9px 10px; border:1px solid var(--kraft-line); border-radius:8px; background:#fff; color:var(--ink);">
+      <input type="text" id="newGenreName" placeholder="新しいジャンル名" style="width:100%; font-size:15px; padding:9px 10px; border:1px solid var(--kraft-line); border-radius:12px; background:#fff; color:var(--ink);">
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" id="closeGenreBtn" style="flex:1;">閉じる</button>
@@ -480,7 +576,7 @@
   "use strict";
   const STORAGE_KEY = "kakeibo_entries_v1";
   const GENRE_KEY = "kakeibo_genres_v1";
-  const GENRE_PALETTE = ["#B7282E","#9C7F3F","#3A5A82","#6B7A3A","#7A4A6B","#B0562E","#3E6E68","#5B5750"];
+  const GENRE_PALETTE = ["#FF8FAB","#FFB4A2","#FFD97D","#FDE49B","#B5E8B0","#8FD9C4","#8ECAE6","#A7C7E7","#B497D6","#D8A7E8","#F5A9C9","#C9E4A0"];
   let entries = loadEntries();
   let genres = loadGenres();
   let currentAmountStr = "";
@@ -494,12 +590,12 @@
       if(raw) return JSON.parse(raw);
     }catch(e){}
     const defaults = [
-      { name:"食費", color:"#B7282E" },
-      { name:"日用品", color:"#9C7F3F" },
-      { name:"交通", color:"#3A5A82" },
-      { name:"娯楽", color:"#6B7A3A" },
-      { name:"医療", color:"#7A4A6B" },
-      { name:"その他", color:"#5B5750" }
+      { name:"食費", color:"#FF8FAB" },
+      { name:"日用品", color:"#FFD97D" },
+      { name:"交通", color:"#8ECAE6" },
+      { name:"娯楽", color:"#B5E8B0" },
+      { name:"医療", color:"#D8A7E8" },
+      { name:"その他", color:"#B39AAE" }
     ].map(g => Object.assign({ id: genId() }, g));
     try{ localStorage.setItem(GENRE_KEY, JSON.stringify(defaults)); }catch(e){}
     return defaults;
@@ -551,6 +647,7 @@
       tab.classList.add("active");
       document.getElementById("view-" + tab.dataset.view).classList.add("active");
       if(tab.dataset.view === "record") renderRecordView();
+      if(tab.dataset.view === "analysis") renderAnalysisView();
     });
   });
 
@@ -593,6 +690,7 @@
     currentAmountStr = "";
     renderAmount();
     renderUndoLine();
+    renderAnalysisView();
   });
 
   function renderUndoLine(){
@@ -604,6 +702,7 @@
       entries = entries.filter(e => e.id !== last.id);
       saveEntries();
       renderUndoLine();
+      renderAnalysisView();
     });
   }
 
@@ -637,7 +736,7 @@
       html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
       g.items.forEach(e=>{
         const genre = e.genreId ? getGenre(e.genreId) : null;
-        const dotColor = genre ? genre.color : "rgba(42,38,32,0.25)";
+        const dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
         const genreLabel = genre ? genre.name : "未分類";
         html += '<div class="entry-row" data-id="' + e.id + '">' +
           '<span class="entry-left"><span class="genre-dot" style="background:' + dotColor + '"></span>' +
@@ -713,6 +812,7 @@
     saveEntries();
     closeEditModal();
     renderRecordView();
+    renderAnalysisView();
     renderUndoLine();
   });
 
@@ -722,6 +822,7 @@
     saveEntries();
     closeEditModal();
     renderRecordView();
+    renderAnalysisView();
     renderUndoLine();
   });
 
@@ -743,6 +844,8 @@
     });
   }
 
+  let openPickerId = null;
+
   function renderGenreList(){
     if(genres.length === 0){
       genreList.innerHTML = '<p style="font-size:13px; color:var(--ink-soft); padding:6px 0;">まだジャンルがありません。</p>';
@@ -750,12 +853,37 @@
     }
     genreList.innerHTML = genres.map(g =>
       '<div class="genre-row" data-id="' + g.id + '">' +
-        '<span class="dot" style="background:' + g.color + '"></span>' +
-        '<input type="text" value="' + escapeHtml(g.name) + '" data-id="' + g.id + '">' +
-        '<button type="button" class="genre-del" data-id="' + g.id + '">×</button>' +
+        '<div class="genre-row-main">' +
+          '<button type="button" class="dot-btn" data-id="' + g.id + '" style="background:' + g.color + '"></button>' +
+          '<input type="text" value="' + escapeHtml(g.name) + '" data-id="' + g.id + '">' +
+          '<button type="button" class="genre-del" data-id="' + g.id + '">×</button>' +
+        '</div>' +
+        (openPickerId === g.id ?
+          '<div class="genre-color-picker">' + GENRE_PALETTE.map(c=>
+            '<button type="button" class="swatch" data-pick="' + g.id + '" data-color="' + c + '" style="background:' + c + '"' + (c === g.color ? ' aria-current="true"' : '') + '></button>'
+          ).join('') + '</div>' : '') +
       '</div>'
     ).join('');
 
+    genreList.querySelectorAll(".dot-btn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        openPickerId = openPickerId === btn.dataset.id ? null : btn.dataset.id;
+        renderGenreList();
+      });
+    });
+    genreList.querySelectorAll(".swatch[data-pick]").forEach(sw=>{
+      sw.addEventListener("click", ()=>{
+        const g = getGenre(sw.dataset.pick);
+        if(g){
+          g.color = sw.dataset.color;
+          saveGenres();
+          renderRecordView();
+          renderAnalysisView();
+        }
+        openPickerId = null;
+        renderGenreList();
+      });
+    });
     genreList.querySelectorAll("input[data-id]").forEach(input=>{
       input.addEventListener("change", ()=>{
         const g = getGenre(input.dataset.id);
@@ -763,6 +891,7 @@
           g.name = input.value.trim();
           saveGenres();
           renderRecordView();
+          renderAnalysisView();
         }
       });
     });
@@ -775,6 +904,7 @@
         saveEntries();
         renderGenreList();
         renderRecordView();
+        renderAnalysisView();
         if(editingSelectedGenreId === id) editingSelectedGenreId = null;
         if(overlay.classList.contains("active")) renderEditGenreChips();
       });
@@ -790,6 +920,7 @@
   function closeGenreModal(){
     genreOverlay.classList.remove("active");
     if(overlay.classList.contains("active")) renderEditGenreChips();
+    renderAnalysisView();
   }
 
   document.getElementById("manageGenresBtn").addEventListener("click", openGenreModal);
@@ -803,12 +934,108 @@
     saveGenres();
     newGenreName.value = "";
     renderGenreList();
+    renderAnalysisView();
   });
 
+  /* ---------- 分析画面 ---------- */
+  const periodSwitch = document.getElementById("periodSwitch");
+  const analysisBody = document.getElementById("analysisBody");
+  let currentPeriod = "month";
+
+  periodSwitch.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      currentPeriod = btn.dataset.period;
+      periodSwitch.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b === btn));
+      renderAnalysisView();
+    });
+  });
+
+  function getPeriodEntries(period){
+    const now = new Date();
+    if(period === "month"){
+      return entries.filter(e=>{
+        const d = new Date(e.ts);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      });
+    }
+    const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const m = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    return entries.filter(e=>{
+      const d = new Date(e.ts);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+  }
+
+  function getDayDivisor(period){
+    const now = new Date();
+    if(period === "month") return now.getDate();
+    const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const m = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+    return new Date(y, m + 1, 0).getDate();
+  }
+
+  function renderAnalysisView(){
+    const periodEntries = getPeriodEntries(currentPeriod);
+    const total = periodEntries.reduce((s,e)=> s + e.amount, 0);
+    const divisor = getDayDivisor(currentPeriod);
+    const dailyAvg = divisor > 0 ? Math.round(total / divisor) : 0;
+
+    let html = '<div class="stat-row">' +
+      '<div class="stat-card"><span class="label">合計</span><span class="num">' + formatYen(total) + '</span></div>' +
+      '<div class="stat-card"><span class="label">1日平均</span><span class="num">' + formatYen(dailyAvg) + '</span></div>' +
+      '</div>';
+
+    if(periodEntries.length === 0){
+      html += '<div class="empty-state" style="padding:30px 10px;">この期間の記録はまだありません。</div>';
+      analysisBody.innerHTML = html;
+      return;
+    }
+
+    const buckets = {};
+    periodEntries.forEach(e=>{
+      const key = e.genreId || "__none__";
+      if(!buckets[key]) buckets[key] = 0;
+      buckets[key] += e.amount;
+    });
+    const rows = Object.keys(buckets).map(key=>{
+      const genre = key === "__none__" ? null : getGenre(key);
+      return {
+        name: genre ? genre.name : "未分類",
+        color: genre ? genre.color : "rgba(91,71,87,0.3)",
+        amount: buckets[key]
+      };
+    }).sort((a,b)=> b.amount - a.amount);
+
+    let cursor = 0;
+    const gradientParts = rows.map(r=>{
+      const start = cursor;
+      const fraction = total > 0 ? (r.amount / total) * 100 : 0;
+      cursor += fraction;
+      return r.color + ' ' + start.toFixed(3) + '% ' + cursor.toFixed(3) + '%';
+    });
+    const gradient = 'conic-gradient(' + gradientParts.join(', ') + ')';
+
+    html += '<div class="pie-outer">' +
+      '<div class="pie" style="background:' + gradient + '"></div>' +
+      '<div class="pie-center"><span class="label">合計</span><span class="num">' + formatYen(total) + '</span></div>' +
+      '</div>';
+
+    html += '<p class="cat-section-title">ジャンル別内訳</p>';
+    rows.forEach(r=>{
+      const pct = total > 0 ? Math.round((r.amount / total) * 100) : 0;
+      html += '<div class="legend-row">' +
+        '<span class="cat-name"><span class="dot" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</span>' +
+        '<span class="cat-amount">' + formatYen(r.amount) + '<span class="pct">' + pct + '%</span></span>' +
+        '</div>';
+    });
+
+    analysisBody.innerHTML = html;
+  }
 
   /* ---------- 初期化 ---------- */
   renderAmount();
   renderUndoLine();
+  renderAnalysisView();
 })();
 </script>
 </body>
