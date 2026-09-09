@@ -258,6 +258,10 @@
     transition:transform .05s ease;
   }
   .entry-row:active{ transform:scale(0.985); }
+  .entry-row-empty{ opacity:0.55; cursor:default; }
+  .entry-row-empty:active{ transform:none; }
+  .entry-row-empty .entry-genre{ color:var(--ink-soft); }
+  .entry-row-empty .entry-amount{ color:var(--ink-soft); font-weight:600; }
   .entry-left{ display:flex; align-items:center; gap:8px; min-width:0; }
   .genre-dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
   .entry-genre{ font-size:12px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -444,6 +448,26 @@
     padding:60px 20px;
     line-height:1.7;
   }
+
+  .past-toggle{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 4px;
+    margin-top:6px;
+    border-top:1px solid var(--kraft-line);
+    font-size:13px;
+    font-weight:600;
+    color:var(--brass);
+    cursor:pointer;
+  }
+  .past-toggle .chev{
+    display:inline-block;
+    transition:transform .2s ease;
+    font-size:12px;
+  }
+  .past-toggle .chev.open{ transform:rotate(180deg); }
+  .past-section{ padding-top:4px; }
 
   /* ---------- 編集モーダル ---------- */
   .overlay{
@@ -829,6 +853,7 @@
   const recordView = document.getElementById("recordView");
   const recordTotalToggle = document.getElementById("recordTotalToggle");
   let recordShowTotal = false;
+  let pastSectionExpanded = false;
 
   recordTotalToggle.querySelectorAll("button").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -843,52 +868,107 @@
       recordView.innerHTML = '<div class="empty-state">まだ記録がありません。<br>「入力」タブから金額を打って保存すると、ここに並びます。</div>';
       return;
     }
-    const sorted = [...entries].sort((a,b)=> b.ts - a.ts);
     const now = new Date();
-    const monthEntries = entries.filter(e=>{
-      const d = new Date(e.ts);
+    const isCurrentMonth = ts => {
+      const d = new Date(ts);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    }).filter(e => recordShowTotal || isLivingEntry(e));
+    };
+    const currentMonthAll = entries.filter(e => isCurrentMonth(e.ts));
+    const pastAll = entries.filter(e => !isCurrentMonth(e.ts));
+
+    const monthEntries = currentMonthAll.filter(e => recordShowTotal || isLivingEntry(e));
     const total = monthEntries.reduce((s,e)=> s + e.amount, 0);
     const totalLabel = recordShowTotal ? "今月の総額" : "今月の生活費合計";
 
     let html = '<div class="total-card"><span class="label">' + totalLabel + '</span>' +
       '<span><span class="num">' + formatYen(total) + '</span><span class="count">（' + monthEntries.length + '件）</span></span></div>';
 
-    const groups = [];
-    let currentKey = null, currentGroup = null;
-    sorted.forEach(e=>{
-      const key = dateKey(e.ts);
-      if(key !== currentKey){
-        currentKey = key;
-        currentGroup = { label: formatDateGroup(e.ts), items: [] };
-        groups.push(currentGroup);
-      }
-      currentGroup.items.push(e);
+    function buildEntryRow(e, showFullDate){
+      const genre = e.genreId ? getGenre(e.genreId) : null;
+      const dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
+      const genreLabel = genre ? genre.name : "未分類";
+      const payLabel = e.paymentMethod ? paymentLabel(e.paymentMethod) : "";
+      const typeLabel = e.expenseType === "other" ? "その他" : "";
+      const subLabel = [typeLabel, payLabel].filter(Boolean).join(" ・ ");
+      const timeText = showFullDate ?
+        (new Date(e.ts).getMonth()+1) + "/" + new Date(e.ts).getDate() + " " + formatTime(e.ts) :
+        formatTime(e.ts);
+      return '<div class="entry-row" data-id="' + e.id + '">' +
+        '<span class="entry-left"><span class="genre-dot" style="background:' + dotColor + '"></span>' +
+        '<span class="entry-time">' + timeText + '</span>' +
+        '<span class="entry-genre">' + genreLabel + (subLabel ? ' ・ ' + subLabel : '') + '</span></span>' +
+        '<span class="entry-amount">' + formatYen(e.amount) + '</span></div>';
+    }
+
+    const groupsByDay = {};
+    monthEntries.forEach(e=>{
+      const day = new Date(e.ts).getDate();
+      if(!groupsByDay[day]) groupsByDay[day] = { label: formatDateGroup(e.ts), items: [] };
+      groupsByDay[day].items.push(e);
     });
 
-    groups.forEach(g=>{
-      html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
-      g.items.forEach(e=>{
-        const genre = e.genreId ? getGenre(e.genreId) : null;
-        const dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
-        const genreLabel = genre ? genre.name : "未分類";
-        const payLabel = e.paymentMethod ? paymentLabel(e.paymentMethod) : "";
-        const typeLabel = e.expenseType === "other" ? "その他" : "";
-        const subLabel = [typeLabel, payLabel].filter(Boolean).join(" ・ ");
-        html += '<div class="entry-row" data-id="' + e.id + '">' +
-          '<span class="entry-left"><span class="genre-dot" style="background:' + dotColor + '"></span>' +
-          '<span class="entry-time">' + formatTime(e.ts) + '</span>' +
-          '<span class="entry-genre">' + genreLabel + (subLabel ? ' ・ ' + subLabel : '') + '</span></span>' +
-          '<span class="entry-amount">' + formatYen(e.amount) + '</span></div>';
+    if(now.getDate() === 0){
+      html += '<div class="empty-state" style="padding:24px 10px;">今月の記録はまだありません。</div>';
+    } else {
+      for(let day = now.getDate(); day >= 1; day--){
+        const g = groupsByDay[day];
+        if(g){
+          html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
+          g.items.forEach(e=>{ html += buildEntryRow(e, false); });
+          html += '</div>';
+        } else {
+          const syntheticTs = new Date(now.getFullYear(), now.getMonth(), day, 12).getTime();
+          html += '<div class="date-group"><p class="date-heading">' + formatDateGroup(syntheticTs) + '</p>' +
+            '<div class="entry-row entry-row-empty">' +
+              '<span class="entry-left"><span class="genre-dot" style="background:rgba(91,71,87,0.15)"></span>' +
+              '<span class="entry-genre">記録なし</span></span>' +
+              '<span class="entry-amount">¥0</span></div>' +
+            '</div>';
+        }
+      }
+    }
+
+    if(pastAll.length > 0){
+      const pastSorted = [...pastAll].sort((a,b)=> b.ts - a.ts);
+      const monthGroups = [];
+      let mKey = null, mGroup = null;
+      pastSorted.forEach(e=>{
+        const d = new Date(e.ts);
+        const key = d.getFullYear() + "-" + d.getMonth();
+        if(key !== mKey){
+          mKey = key;
+          mGroup = { label: d.getFullYear() + "年" + (d.getMonth()+1) + "月", items: [] };
+          monthGroups.push(mGroup);
+        }
+        mGroup.items.push(e);
+      });
+
+      html += '<div class="past-toggle" id="pastToggle">' +
+        '<span>過去の記録（' + pastAll.length + '件）</span>' +
+        '<span class="chev' + (pastSectionExpanded ? ' open' : '') + '">▾</span></div>';
+      html += '<div class="past-section" id="pastSection" style="display:' + (pastSectionExpanded ? 'block' : 'none') + '">';
+      monthGroups.forEach(g=>{
+        html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
+        g.items.forEach(e=>{ html += buildEntryRow(e, true); });
+        html += '</div>';
       });
       html += '</div>';
-    });
+    }
 
     recordView.innerHTML = html;
     recordView.querySelectorAll(".entry-row").forEach(row=>{
       row.addEventListener("click", ()=> openEditModal(row.dataset.id));
     });
+    const pastToggle = document.getElementById("pastToggle");
+    if(pastToggle){
+      pastToggle.addEventListener("click", ()=>{
+        pastSectionExpanded = !pastSectionExpanded;
+        const section = document.getElementById("pastSection");
+        const chev = pastToggle.querySelector(".chev");
+        section.style.display = pastSectionExpanded ? "block" : "none";
+        chev.classList.toggle("open", pastSectionExpanded);
+      });
+    }
   }
 
   /* ---------- 編集モーダル ---------- */
@@ -1251,6 +1331,28 @@
 
     html += '<p class="cat-section-title">ジャンル別内訳</p>';
     rows.forEach(r=>{
+      const pct = total > 0 ? Math.round((r.amount / total) * 100) : 0;
+      html += '<div class="legend-row">' +
+        '<span class="cat-name"><span class="dot" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</span>' +
+        '<span class="cat-amount">' + formatYen(r.amount) + '<span class="pct">' + pct + '%</span></span>' +
+        '</div>';
+    });
+
+    const payColors = { cash:"#8FD9C4", card:"#8ECAE6" };
+    const payBuckets = { cash:0, card:0, none:0 };
+    periodEntries.forEach(e=>{
+      const k = (e.paymentMethod === "cash" || e.paymentMethod === "card") ? e.paymentMethod : "none";
+      payBuckets[k] += e.amount;
+    });
+    const payRows = [
+      { name:"現金", color:payColors.cash, amount:payBuckets.cash },
+      { name:"カード", color:payColors.card, amount:payBuckets.card }
+    ];
+    if(payBuckets.none > 0){
+      payRows.push({ name:"未設定", color:"rgba(91,71,87,0.3)", amount:payBuckets.none });
+    }
+    html += '<p class="cat-section-title" style="margin-top:20px;">支払い方法別内訳</p>';
+    payRows.forEach(r=>{
       const pct = total > 0 ? Math.round((r.amount / total) * 100) : 0;
       html += '<div class="legend-row">' +
         '<span class="cat-name"><span class="dot" style="background:' + r.color + '"></span>' + escapeHtml(r.name) + '</span>' +
