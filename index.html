@@ -265,9 +265,19 @@
   .entry-amount{ font-size:19px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--shu); }
 
   .record-header{
-    padding:2px 16px 4px;
+    padding:8px 16px 10px;
     display:flex;
-    justify-content:flex-end;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+  }
+  .segmented-sm{
+    width:150px;
+    margin-bottom:0;
+  }
+  .segmented-sm button{
+    padding:6px 0;
+    font-size:12px;
   }
   .link-btn{
     background:none; border:none;
@@ -275,6 +285,7 @@
     font-size:13px;
     font-weight:600;
     padding:6px 2px;
+    white-space:nowrap;
   }
 
   /* ---------- ジャンルチップ ---------- */
@@ -536,6 +547,10 @@
     <!-- 記録画面 -->
     <section class="view" id="view-record">
       <div class="record-header">
+        <div class="segmented segmented-sm" id="recordTotalToggle">
+          <button data-mode="living" class="active">生活費</button>
+          <button data-mode="total">総額</button>
+        </div>
         <button class="link-btn" id="manageGenresBtn">ジャンルを管理</button>
       </div>
       <div class="record-view" id="recordView"></div>
@@ -550,7 +565,7 @@
         </div>
         <label class="check-row">
           <input type="checkbox" id="totalToggle">
-          <span>総額で表示（生活費以外も含む）</span>
+          <span>総額で表示（その他も含む）</span>
         </label>
         <div id="analysisBody"></div>
       </div>
@@ -597,17 +612,17 @@
     <div class="confirm-amount">
       <span class="yen-mark">¥</span><span id="confirmAmountDisplay">0</span>
     </div>
-    <div class="field">
-      <label>区分</label>
-      <div class="chip-row" id="confirmTypeChips"></div>
+    <div class="field" id="confirmPaymentField">
+      <label>支払い方法</label>
+      <div class="chip-row" id="confirmPaymentChips"></div>
     </div>
     <div class="field">
       <label>ジャンル</label>
       <div class="chip-row" id="confirmGenreChips"></div>
     </div>
-    <div class="field" id="confirmPaymentField">
-      <label>支払い方法</label>
-      <div class="chip-row" id="confirmPaymentChips"></div>
+    <div class="field">
+      <label>区分</label>
+      <div class="chip-row" id="confirmTypeChips"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" id="confirmCancelBtn">キャンセル</button>
@@ -648,12 +663,11 @@
   let selectedSwatch = GENRE_PALETTE[0];
   const PAYMENT_METHODS = [
     { id:"cash", label:"現金" },
-    { id:"card", label:"カード" },
-    { id:"other", label:"その他" }
+    { id:"card", label:"カード" }
   ];
   const EXPENSE_TYPES = [
     { id:"living", label:"生活費" },
-    { id:"excluded", label:"それ以外" }
+    { id:"other", label:"その他" }
   ];
   let lastGenreId = null;
   let lastPaymentMethod = "cash";
@@ -665,7 +679,7 @@
     const m = PAYMENT_METHODS.find(p => p.id === id);
     return m ? m.label : "";
   }
-  function isLivingEntry(e){ return e.expenseType !== "excluded"; }
+  function isLivingEntry(e){ return e.expenseType !== "other" && e.expenseType !== "excluded"; }
 
   function loadGenres(){
     try{
@@ -780,11 +794,11 @@
       ts: Date.now(),
       expenseType: confirmSelectedType,
       genreId: confirmSelectedGenreId || null,
-      paymentMethod: confirmSelectedType === "excluded" ? "other" : (confirmSelectedPayment || null)
+      paymentMethod: confirmSelectedPayment || null
     };
     entries.push(entry);
     lastGenreId = entry.genreId;
-    if(confirmSelectedType !== "excluded") lastPaymentMethod = entry.paymentMethod;
+    lastPaymentMethod = entry.paymentMethod;
     saveEntries();
 
     confirmOverlay.classList.remove("active");
@@ -813,6 +827,16 @@
 
   /* ---------- 記録画面 ---------- */
   const recordView = document.getElementById("recordView");
+  const recordTotalToggle = document.getElementById("recordTotalToggle");
+  let recordShowTotal = false;
+
+  recordTotalToggle.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      recordShowTotal = btn.dataset.mode === "total";
+      recordTotalToggle.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b === btn));
+      renderRecordView();
+    });
+  });
 
   function renderRecordView(){
     if(entries.length === 0){
@@ -820,10 +844,16 @@
       return;
     }
     const sorted = [...entries].sort((a,b)=> b.ts - a.ts);
-    const total = entries.reduce((s,e)=> s + e.amount, 0);
+    const now = new Date();
+    const monthEntries = entries.filter(e=>{
+      const d = new Date(e.ts);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }).filter(e => recordShowTotal || isLivingEntry(e));
+    const total = monthEntries.reduce((s,e)=> s + e.amount, 0);
+    const totalLabel = recordShowTotal ? "今月の総額" : "今月の生活費合計";
 
-    let html = '<div class="total-card"><span class="label">合計</span>' +
-      '<span><span class="num">' + formatYen(total) + '</span><span class="count">（' + entries.length + '件）</span></span></div>';
+    let html = '<div class="total-card"><span class="label">' + totalLabel + '</span>' +
+      '<span><span class="num">' + formatYen(total) + '</span><span class="count">（' + monthEntries.length + '件）</span></span></div>';
 
     const groups = [];
     let currentKey = null, currentGroup = null;
@@ -844,7 +874,7 @@
         const dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
         const genreLabel = genre ? genre.name : "未分類";
         const payLabel = e.paymentMethod ? paymentLabel(e.paymentMethod) : "";
-        const typeLabel = e.expenseType === "excluded" ? "それ以外" : "";
+        const typeLabel = e.expenseType === "other" ? "その他" : "";
         const subLabel = [typeLabel, payLabel].filter(Boolean).join(" ・ ");
         html += '<div class="entry-row" data-id="' + e.id + '">' +
           '<span class="entry-left"><span class="genre-dot" style="background:' + dotColor + '"></span>' +
@@ -916,12 +946,7 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         editingSelectedType = chip.dataset.type;
-        if(editingSelectedType === "excluded"){
-          editingSelectedPayment = "other";
-        }
         renderEditTypeChips();
-        renderEditPaymentChips();
-        document.getElementById("editPaymentField").style.display = editingSelectedType === "excluded" ? "none" : "";
       });
     });
   }
@@ -930,7 +955,7 @@
     const entry = entries.find(e=> e.id === id);
     if(!entry) return;
     editingId = id;
-    editingSelectedType = entry.expenseType === "excluded" ? "excluded" : "living";
+    editingSelectedType = entry.expenseType === "other" ? "other" : "living";
     editingSelectedGenreId = entry.genreId || null;
     editingSelectedPayment = entry.paymentMethod || "cash";
     editAmount.value = entry.amount;
@@ -938,7 +963,6 @@
     renderEditTypeChips();
     renderEditGenreChips();
     renderEditPaymentChips();
-    document.getElementById("editPaymentField").style.display = editingSelectedType === "excluded" ? "none" : "";
     overlay.classList.add("active");
   }
   function closeEditModal(){
@@ -959,7 +983,7 @@
     if(!isNaN(newTs)) entry.ts = newTs;
     entry.expenseType = editingSelectedType;
     entry.genreId = editingSelectedGenreId || null;
-    entry.paymentMethod = editingSelectedType === "excluded" ? "other" : (editingSelectedPayment || null);
+    entry.paymentMethod = editingSelectedPayment || null;
     saveEntries();
     closeEditModal();
     renderRecordView();
@@ -988,14 +1012,7 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         confirmSelectedType = chip.dataset.type;
-        if(confirmSelectedType === "excluded"){
-          confirmSelectedPayment = "other";
-        } else {
-          confirmSelectedPayment = lastPaymentMethod;
-        }
         renderConfirmTypeChips();
-        renderConfirmPaymentChips();
-        document.getElementById("confirmPaymentField").style.display = confirmSelectedType === "excluded" ? "none" : "";
       });
     });
   }
