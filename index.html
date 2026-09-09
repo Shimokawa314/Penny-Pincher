@@ -493,12 +493,25 @@
     margin-bottom:18px;
   }
   .confirm-amount .yen-mark{ font-size:22px; color:var(--shu); font-weight:700; }
-  .confirm-amount #confirmAmountDisplay{
+  .confirm-amount #confirmAmountDisplay,
+  .confirm-amount #savedAmountDisplay{
     font-size:38px;
     font-weight:700;
     color:var(--shu);
     font-variant-numeric:tabular-nums;
   }
+  .saved-row{
+    display:flex;
+    justify-content:space-between;
+    padding:9px 4px;
+    border-bottom:1px solid var(--kraft-line);
+    font-size:14px;
+    color:var(--ink);
+  }
+  .saved-row:last-child{ border-bottom:none; }
+  .saved-row .k{ color:var(--ink-soft); }
+  .saved-row .v{ display:flex; align-items:center; gap:6px; font-weight:600; }
+  .saved-row .v .dot{ width:8px; height:8px; border-radius:50%; flex:0 0 auto; }
   .field{ margin-bottom:14px; }
   .field label{ display:block; font-size:12px; color:var(--ink-soft); margin-bottom:5px; }
   .field input{
@@ -655,10 +668,28 @@
   </div>
 </div>
 
+<!-- 登録完了ポップアップ -->
+<div class="overlay" id="savedOverlay">
+  <div class="modal" style="text-align:center;">
+    <h3>登録しました</h3>
+    <div class="confirm-amount">
+      <span class="yen-mark">¥</span><span id="savedAmountDisplay">0</span>
+    </div>
+    <div id="savedDetails" style="margin-bottom:6px;"></div>
+    <div class="modal-actions">
+      <button class="btn-save" id="savedCloseBtn" style="flex:1;">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- ジャンル管理モーダル -->
 <div class="overlay" id="genreOverlay">
   <div class="modal">
     <h3>ジャンルを管理</h3>
+    <div class="segmented" id="genreModalTabs" style="margin-bottom:14px;">
+      <button data-type="living" class="active">生活費</button>
+      <button data-type="other">その他</button>
+    </div>
     <div id="genreList"></div>
     <div class="genre-add-row">
       <div class="swatches" id="colorSwatches"></div>
@@ -676,9 +707,23 @@
   "use strict";
   const STORAGE_KEY = "kakeibo_entries_v1";
   const GENRE_KEY = "kakeibo_genres_v1";
+  const OTHER_GENRE_KEY = "kakeibo_genres_other_v1";
   const GENRE_PALETTE = ["#FF8FAB","#FFB4A2","#FFD97D","#FDE49B","#B5E8B0","#8FD9C4","#8ECAE6","#A7C7E7","#B497D6","#D8A7E8","#F5A9C9","#C9E4A0"];
   let entries = loadEntries();
-  let genres = loadGenres();
+  let livingGenres = loadGenreSet(GENRE_KEY, [
+    { name:"食費", color:"#FF8FAB" },
+    { name:"日用品", color:"#FFD97D" },
+    { name:"交通", color:"#8ECAE6" },
+    { name:"娯楽", color:"#B5E8B0" },
+    { name:"医療", color:"#D8A7E8" },
+    { name:"その他", color:"#B39AAE" }
+  ]);
+  let otherGenres = loadGenreSet(OTHER_GENRE_KEY, [
+    { name:"家賃", color:"#F5A9C9" },
+    { name:"光熱費", color:"#FFB4A2" },
+    { name:"税金", color:"#A7C7E7" },
+    { name:"その他", color:"#B39AAE" }
+  ]);
   let currentAmountStr = "";
   let editingId = null;
   let editingSelectedGenreId = null;
@@ -705,28 +750,29 @@
   }
   function isLivingEntry(e){ return e.expenseType !== "other" && e.expenseType !== "excluded"; }
 
-  function loadGenres(){
+  function genreArrayFor(type){ return type === "other" ? otherGenres : livingGenres; }
+  function genreKeyFor(type){ return type === "other" ? OTHER_GENRE_KEY : GENRE_KEY; }
+  function setGenreArrayFor(type, arr){
+    if(type === "other") otherGenres = arr; else livingGenres = arr;
+  }
+
+  function loadGenreSet(key, defaultSpecs){
     try{
-      const raw = localStorage.getItem(GENRE_KEY);
+      const raw = localStorage.getItem(key);
       if(raw) return JSON.parse(raw);
     }catch(e){}
-    const defaults = [
-      { name:"食費", color:"#FF8FAB" },
-      { name:"日用品", color:"#FFD97D" },
-      { name:"交通", color:"#8ECAE6" },
-      { name:"娯楽", color:"#B5E8B0" },
-      { name:"医療", color:"#D8A7E8" },
-      { name:"その他", color:"#B39AAE" }
-    ].map(g => Object.assign({ id: genId() }, g));
-    try{ localStorage.setItem(GENRE_KEY, JSON.stringify(defaults)); }catch(e){}
+    const defaults = defaultSpecs.map(g => Object.assign({ id: genId() }, g));
+    try{ localStorage.setItem(key, JSON.stringify(defaults)); }catch(e){}
     return defaults;
   }
-  function saveGenres(){
-    try{ localStorage.setItem(GENRE_KEY, JSON.stringify(genres)); }
+  function saveGenreSet(type){
+    try{ localStorage.setItem(genreKeyFor(type), JSON.stringify(genreArrayFor(type))); }
     catch(e){ console.error("ジャンルの保存に失敗しました", e); }
   }
   function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
-  function getGenre(id){ return genres.find(g => g.id === id) || null; }
+  function getGenre(id){
+    return livingGenres.find(g => g.id === id) || otherGenres.find(g => g.id === id) || null;
+  }
 
   function loadEntries(){
     try{
@@ -802,7 +848,7 @@
     if(!num) return;
     pendingAmount = num;
     confirmSelectedType = "living";
-    confirmSelectedGenreId = lastGenreId;
+    confirmSelectedGenreId = livingGenres.some(g => g.id === lastGenreId) ? lastGenreId : null;
     confirmSelectedPayment = lastPaymentMethod;
     document.getElementById("confirmAmountDisplay").textContent = num.toLocaleString("ja-JP");
     renderConfirmTypeChips();
@@ -834,6 +880,33 @@
     renderAmount();
     renderUndoLine();
     renderAnalysisView();
+    showSavedPopup(entry);
+  }
+
+  let savedPopupTimer = null;
+  function showSavedPopup(entry){
+    const genre = entry.genreId ? getGenre(entry.genreId) : null;
+    document.getElementById("savedAmountDisplay").textContent = entry.amount.toLocaleString("ja-JP");
+    const rows = [];
+    rows.push({
+      k: "ジャンル",
+      v: genre ?
+        '<span class="dot" style="background:' + genre.color + '"></span>' + escapeHtml(genre.name) :
+        '未分類'
+    });
+    rows.push({ k: "区分", v: entry.expenseType === "other" ? "その他" : "生活費" });
+    rows.push({ k: "支払い方法", v: entry.paymentMethod ? paymentLabel(entry.paymentMethod) : "-" });
+    document.getElementById("savedDetails").innerHTML = rows.map(r=>
+      '<div class="saved-row"><span class="k">' + r.k + '</span><span class="v">' + r.v + '</span></div>'
+    ).join('');
+
+    savedOverlay.classList.add("active");
+    clearTimeout(savedPopupTimer);
+    savedPopupTimer = setTimeout(closeSavedPopup, 2200);
+  }
+  function closeSavedPopup(){
+    clearTimeout(savedPopupTimer);
+    savedOverlay.classList.remove("active");
   }
 
   function renderUndoLine(){
@@ -981,7 +1054,7 @@
   function renderEditGenreChips(){
     let html = '';
     html += '<button type="button" class="chip muted' + (editingSelectedGenreId ? '' : ' selected') + '" data-genre="">未分類</button>';
-    genres.forEach(g=>{
+    genreArrayFor(editingSelectedType).forEach(g=>{
       const sel = editingSelectedGenreId === g.id ? ' selected' : '';
       html += '<button type="button" class="chip' + sel + '" data-genre="' + g.id + '">' +
         '<span class="dot" style="background:' + g.color + '"></span>' + escapeHtml(g.name) + '</button>';
@@ -995,7 +1068,7 @@
         renderEditGenreChips();
       });
     });
-    document.getElementById("editAddGenreChip").addEventListener("click", openGenreModal);
+    document.getElementById("editAddGenreChip").addEventListener("click", ()=> openGenreModal(editingSelectedType));
   }
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1026,7 +1099,11 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         editingSelectedType = chip.dataset.type;
+        if(!genreArrayFor(editingSelectedType).some(g => g.id === editingSelectedGenreId)){
+          editingSelectedGenreId = null;
+        }
         renderEditTypeChips();
+        renderEditGenreChips();
       });
     });
   }
@@ -1092,18 +1169,23 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         confirmSelectedType = chip.dataset.type;
+        if(!genreArrayFor(confirmSelectedType).some(g => g.id === confirmSelectedGenreId)){
+          confirmSelectedGenreId = null;
+        }
         renderConfirmTypeChips();
+        renderConfirmGenreChips();
       });
     });
   }
   function renderConfirmGenreChips(){
     let html = '';
     html += '<button type="button" class="chip muted' + (confirmSelectedGenreId ? '' : ' selected') + '" data-genre="">未分類</button>';
-    genres.forEach(g=>{
+    genreArrayFor(confirmSelectedType).forEach(g=>{
       const sel = confirmSelectedGenreId === g.id ? ' selected' : '';
       html += '<button type="button" class="chip' + sel + '" data-genre="' + g.id + '">' +
         '<span class="dot" style="background:' + g.color + '"></span>' + escapeHtml(g.name) + '</button>';
     });
+    html += '<button type="button" class="chip add-chip" id="confirmAddGenreChip">＋ 管理</button>';
     confirmGenreChips.innerHTML = html;
     confirmGenreChips.querySelectorAll(".chip[data-genre]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
@@ -1111,6 +1193,7 @@
         renderConfirmGenreChips();
       });
     });
+    document.getElementById("confirmAddGenreChip").addEventListener("click", ()=> openGenreModal(confirmSelectedType));
   }
   function renderConfirmPaymentChips(){
     confirmPaymentChips.innerHTML = buildPaymentChipsHtml(confirmSelectedPayment);
@@ -1128,11 +1211,28 @@
   confirmOverlay.addEventListener("click", (e)=>{ if(e.target === confirmOverlay) closeConfirmModal(); });
   document.getElementById("confirmSaveBtn").addEventListener("click", commitPendingEntry);
 
+  /* ---------- 登録完了ポップアップ ---------- */
+  const savedOverlay = document.getElementById("savedOverlay");
+  document.getElementById("savedCloseBtn").addEventListener("click", closeSavedPopup);
+  savedOverlay.addEventListener("click", (e)=>{ if(e.target === savedOverlay) closeSavedPopup(); });
+
   /* ---------- ジャンル管理モーダル ---------- */
   const genreOverlay = document.getElementById("genreOverlay");
   const genreList = document.getElementById("genreList");
   const colorSwatches = document.getElementById("colorSwatches");
   const newGenreName = document.getElementById("newGenreName");
+  const genreModalTabs = document.getElementById("genreModalTabs");
+  let genreModalType = "living";
+
+  genreModalTabs.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      genreModalType = btn.dataset.type;
+      genreModalTabs.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b === btn));
+      openPickerId = null;
+      newGenreName.value = "";
+      renderGenreList();
+    });
+  });
 
   function renderSwatches(){
     colorSwatches.innerHTML = GENRE_PALETTE.map(c=>
@@ -1149,11 +1249,12 @@
   let openPickerId = null;
 
   function renderGenreList(){
-    if(genres.length === 0){
+    const list = genreArrayFor(genreModalType);
+    if(list.length === 0){
       genreList.innerHTML = '<p style="font-size:13px; color:var(--ink-soft); padding:6px 0;">まだジャンルがありません。</p>';
       return;
     }
-    genreList.innerHTML = genres.map(g =>
+    genreList.innerHTML = list.map(g =>
       '<div class="genre-row" data-id="' + g.id + '">' +
         '<div class="genre-row-main">' +
           '<button type="button" class="dot-btn" data-id="' + g.id + '" style="background:' + g.color + '"></button>' +
@@ -1178,7 +1279,7 @@
         const g = getGenre(sw.dataset.pick);
         if(g){
           g.color = sw.dataset.color;
-          saveGenres();
+          saveGenreSet(genreModalType);
           renderRecordView();
           renderAnalysisView();
         }
@@ -1191,7 +1292,7 @@
         const g = getGenre(input.dataset.id);
         if(g && input.value.trim()){
           g.name = input.value.trim();
-          saveGenres();
+          saveGenreSet(genreModalType);
           renderRecordView();
           renderAnalysisView();
         }
@@ -1200,20 +1301,24 @@
     genreList.querySelectorAll(".genre-del").forEach(btn=>{
       btn.addEventListener("click", ()=>{
         const id = btn.dataset.id;
-        genres = genres.filter(g => g.id !== id);
-        saveGenres();
+        setGenreArrayFor(genreModalType, genreArrayFor(genreModalType).filter(g => g.id !== id));
+        saveGenreSet(genreModalType);
         entries.forEach(e=>{ if(e.genreId === id) e.genreId = null; });
         saveEntries();
         renderGenreList();
         renderRecordView();
         renderAnalysisView();
         if(editingSelectedGenreId === id) editingSelectedGenreId = null;
+        if(confirmSelectedGenreId === id) confirmSelectedGenreId = null;
         if(overlay.classList.contains("active")) renderEditGenreChips();
+        if(confirmOverlay.classList.contains("active")) renderConfirmGenreChips();
       });
     });
   }
 
-  function openGenreModal(){
+  function openGenreModal(type){
+    genreModalType = type === "other" ? "other" : "living";
+    genreModalTabs.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.type === genreModalType));
     renderSwatches();
     renderGenreList();
     newGenreName.value = "";
@@ -1222,18 +1327,19 @@
   function closeGenreModal(){
     genreOverlay.classList.remove("active");
     if(overlay.classList.contains("active")) renderEditGenreChips();
+    if(confirmOverlay.classList.contains("active")) renderConfirmGenreChips();
     renderAnalysisView();
   }
 
-  document.getElementById("manageGenresBtn").addEventListener("click", openGenreModal);
+  document.getElementById("manageGenresBtn").addEventListener("click", ()=> openGenreModal("living"));
   document.getElementById("closeGenreBtn").addEventListener("click", closeGenreModal);
   genreOverlay.addEventListener("click", (e)=>{ if(e.target === genreOverlay) closeGenreModal(); });
 
   document.getElementById("addGenreBtn").addEventListener("click", ()=>{
     const name = newGenreName.value.trim();
     if(!name) return;
-    genres.push({ id: genId(), name, color: selectedSwatch });
-    saveGenres();
+    genreArrayFor(genreModalType).push({ id: genId(), name, color: selectedSwatch });
+    saveGenreSet(genreModalType);
     newGenreName.value = "";
     renderGenreList();
     renderAnalysisView();
