@@ -166,6 +166,53 @@
   .key:active{ transform:scale(0.94); background:var(--kraft-dark-active); }
   .key.func{ color:var(--shu); font-size:20px; }
 
+  .travel-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:2px 16px 8px;
+    gap:10px;
+  }
+  .travel-switch{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .travel-switch input[type="checkbox"]{
+    appearance:none;
+    -webkit-appearance:none;
+    width:38px; height:22px;
+    background:var(--kraft-dark-active);
+    border-radius:999px;
+    position:relative;
+    cursor:pointer;
+    outline:none;
+    transition:background .2s ease;
+    flex:0 0 auto;
+  }
+  .travel-switch input[type="checkbox"]::before{
+    content:"";
+    position:absolute;
+    top:2px; left:2px;
+    width:18px; height:18px;
+    background:#fff;
+    border-radius:50%;
+    box-shadow:0 1px 3px rgba(0,0,0,0.25);
+    transition:transform .2s ease;
+  }
+  .travel-switch input[type="checkbox"]:checked{ background:var(--shu); }
+  .travel-switch input[type="checkbox"]:checked::before{ transform:translateX(16px); }
+  .fx-note{
+    text-align:center;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:-10px 0 16px;
+  }
+
   .actions{
     margin:20px 16px 8px;
     display:flex;
@@ -262,6 +309,11 @@
   .entry-row-empty:active{ transform:none; }
   .entry-row-empty .entry-genre{ color:var(--ink-soft); }
   .entry-row-empty .entry-amount{ color:var(--ink-soft); font-weight:600; }
+  .entry-row-travel{
+    border-left:3px solid #8ECAE6;
+    background:linear-gradient(to right, rgba(142,202,230,0.14), var(--kraft) 40%);
+  }
+  .travel-badge{ font-size:12px; flex:0 0 auto; }
   .entry-left{ display:flex; align-items:center; gap:8px; min-width:0; }
   .genre-dot{ width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
   .entry-genre{ font-size:12px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -552,10 +604,18 @@
   <main>
     <!-- 入力画面 -->
     <section class="view active" id="view-input">
+      <div class="travel-bar">
+        <label class="travel-switch">
+          <span>🌏 海外旅行モード</span>
+          <input type="checkbox" id="travelModeToggle">
+        </label>
+        <button class="link-btn" id="travelSettingsBtn" style="display:none;">レート設定</button>
+      </div>
+
       <div class="paper">
-        <p class="amount-label">金額</p>
+        <p class="amount-label" id="mainAmountLabel">金額</p>
         <div class="amount-row">
-          <span class="yen-mark">¥</span>
+          <span class="yen-mark" id="mainYenMark">¥</span>
           <span id="amountDisplay" class="placeholder">0</span>
         </div>
       </div>
@@ -570,7 +630,7 @@
         <button class="key" data-k="7">7</button>
         <button class="key" data-k="8">8</button>
         <button class="key" data-k="9">9</button>
-        <button class="key func" data-k="00">00</button>
+        <button class="key func" data-k="00" id="doubleZeroKey">00</button>
         <button class="key" data-k="0">0</button>
         <button class="key func" data-k="back">⌫</button>
       </div>
@@ -649,6 +709,7 @@
     <div class="confirm-amount">
       <span class="yen-mark">¥</span><span id="confirmAmountDisplay">0</span>
     </div>
+    <p class="fx-note" id="confirmFxNote" style="display:none;"></p>
     <div class="field" id="confirmPaymentField">
       <label>支払い方法</label>
       <div class="chip-row" id="confirmPaymentChips"></div>
@@ -675,9 +736,29 @@
     <div class="confirm-amount">
       <span class="yen-mark">¥</span><span id="savedAmountDisplay">0</span>
     </div>
+    <p class="fx-note" id="savedFxNote" style="display:none;"></p>
     <div id="savedDetails" style="margin-bottom:6px;"></div>
     <div class="modal-actions">
       <button class="btn-save" id="savedCloseBtn" style="flex:1;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 海外旅行モード設定モーダル -->
+<div class="overlay" id="travelOverlay">
+  <div class="modal">
+    <h3>海外旅行モードの設定</h3>
+    <div class="field">
+      <label>通貨（例: USD）</label>
+      <input type="text" id="travelCurrencyInput" placeholder="USD" maxlength="8">
+    </div>
+    <div class="field">
+      <label>為替レート（1通貨 = 何円か）</label>
+      <input type="number" id="travelRateInput" inputmode="decimal" placeholder="例: 150.5" step="0.01">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="travelCancelBtn">キャンセル</button>
+      <button class="btn-save" id="travelSaveBtn">設定する</button>
     </div>
   </div>
 </div>
@@ -744,11 +825,33 @@
   let confirmSelectedGenreId = null;
   let confirmSelectedPayment = "cash";
   let confirmSelectedType = "living";
+  let pendingForeign = null;
   function paymentLabel(id){
     const m = PAYMENT_METHODS.find(p => p.id === id);
     return m ? m.label : "";
   }
   function isLivingEntry(e){ return e.expenseType !== "other" && e.expenseType !== "excluded"; }
+
+  const TRAVEL_KEY = "kakeibo_travel_v1";
+  let travelActive = false;
+  let travelCurrency = "";
+  let travelRate = 0;
+  function loadTravelSettings(){
+    try{
+      const raw = localStorage.getItem(TRAVEL_KEY);
+      if(raw){
+        const s = JSON.parse(raw);
+        travelActive = !!s.active;
+        travelCurrency = s.currency || "";
+        travelRate = Number(s.rate) || 0;
+      }
+    }catch(e){}
+  }
+  function saveTravelSettings(){
+    try{ localStorage.setItem(TRAVEL_KEY, JSON.stringify({ active: travelActive, currency: travelCurrency, rate: travelRate })); }
+    catch(e){ console.error("海外旅行モード設定の保存に失敗しました", e); }
+  }
+  loadTravelSettings();
 
   function genreArrayFor(type){ return type === "other" ? otherGenres : livingGenres; }
   function genreKeyFor(type){ return type === "other" ? OTHER_GENRE_KEY : GENRE_KEY; }
@@ -825,9 +928,13 @@
 
   document.querySelectorAll(".key").forEach(btn=>{
     btn.addEventListener("click", ()=>{
-      const k = btn.dataset.k;
+      let k = btn.dataset.k;
+      if(btn.id === "doubleZeroKey" && travelActive) k = ".";
       if(k === "back"){
         currentAmountStr = currentAmountStr.slice(0, -1);
+      } else if(k === "."){
+        if(currentAmountStr === "") currentAmountStr = "0";
+        if(!currentAmountStr.includes(".")) currentAmountStr += ".";
       } else {
         if(currentAmountStr === "0") currentAmountStr = "";
         if(currentAmountStr.length < 9) currentAmountStr += k;
@@ -837,20 +944,40 @@
   });
 
   function renderAmount(){
-    const num = currentAmountStr === "" ? 0 : parseInt(currentAmountStr, 10);
-    amountDisplay.textContent = num.toLocaleString("ja-JP");
-    amountDisplay.classList.toggle("placeholder", num === 0);
-    saveBtn.classList.toggle("disabled", num === 0);
+    if(travelActive){
+      let num = currentAmountStr === "" || currentAmountStr === "." ? 0 : parseFloat(currentAmountStr);
+      if(isNaN(num)) num = 0;
+      amountDisplay.textContent = currentAmountStr === "" ? "0" : currentAmountStr;
+      amountDisplay.classList.toggle("placeholder", num === 0);
+      saveBtn.classList.toggle("disabled", num <= 0);
+    } else {
+      const num = currentAmountStr === "" ? 0 : parseInt(currentAmountStr, 10);
+      amountDisplay.textContent = num.toLocaleString("ja-JP");
+      amountDisplay.classList.toggle("placeholder", num === 0);
+      saveBtn.classList.toggle("disabled", num === 0);
+    }
   }
 
   saveBtn.addEventListener("click", ()=>{
-    const num = parseInt(currentAmountStr || "0", 10);
-    if(!num) return;
-    pendingAmount = num;
+    const fxNote = document.getElementById("confirmFxNote");
+    if(travelActive){
+      const val = (currentAmountStr === "" || currentAmountStr === ".") ? 0 : parseFloat(currentAmountStr);
+      if(!val || val <= 0) return;
+      pendingForeign = val;
+      pendingAmount = Math.round(val * travelRate);
+      fxNote.textContent = travelCurrency + " " + val.toLocaleString("ja-JP",{maximumFractionDigits:2}) + "（レート " + travelRate + "）→ 円換算";
+      fxNote.style.display = "";
+    } else {
+      const num = parseInt(currentAmountStr || "0", 10);
+      if(!num) return;
+      pendingForeign = null;
+      pendingAmount = num;
+      fxNote.style.display = "none";
+    }
     confirmSelectedType = "living";
     confirmSelectedGenreId = livingGenres.some(g => g.id === lastGenreId) ? lastGenreId : null;
     confirmSelectedPayment = lastPaymentMethod;
-    document.getElementById("confirmAmountDisplay").textContent = num.toLocaleString("ja-JP");
+    document.getElementById("confirmAmountDisplay").textContent = pendingAmount.toLocaleString("ja-JP");
     renderConfirmTypeChips();
     renderConfirmGenreChips();
     renderConfirmPaymentChips();
@@ -866,10 +993,16 @@
       genreId: confirmSelectedGenreId || null,
       paymentMethod: confirmSelectedPayment || null
     };
+    if(pendingForeign !== null){
+      entry.foreignAmount = pendingForeign;
+      entry.foreignCurrency = travelCurrency;
+      entry.fxRate = travelRate;
+    }
     entries.push(entry);
     lastGenreId = entry.genreId;
     lastPaymentMethod = entry.paymentMethod;
     saveEntries();
+    pendingForeign = null;
 
     confirmOverlay.classList.remove("active");
     saveBtn.classList.add("stamped");
@@ -887,6 +1020,13 @@
   function showSavedPopup(entry){
     const genre = entry.genreId ? getGenre(entry.genreId) : null;
     document.getElementById("savedAmountDisplay").textContent = entry.amount.toLocaleString("ja-JP");
+    const savedFxNote = document.getElementById("savedFxNote");
+    if(entry.foreignCurrency){
+      savedFxNote.textContent = entry.foreignCurrency + " " + entry.foreignAmount.toLocaleString("ja-JP",{maximumFractionDigits:2}) + "（レート " + entry.fxRate + "）";
+      savedFxNote.style.display = "";
+    } else {
+      savedFxNote.style.display = "none";
+    }
     const rows = [];
     rows.push({
       k: "ジャンル",
@@ -962,12 +1102,16 @@
       const genreLabel = genre ? genre.name : "未分類";
       const payLabel = e.paymentMethod ? paymentLabel(e.paymentMethod) : "";
       const typeLabel = e.expenseType === "other" ? "その他" : "";
-      const subLabel = [typeLabel, payLabel].filter(Boolean).join(" ・ ");
+      const isTravel = !!e.foreignCurrency;
+      const fxLabel = isTravel ? (e.foreignCurrency + " " + e.foreignAmount.toLocaleString("ja-JP",{maximumFractionDigits:2})) : "";
+      const subLabel = [fxLabel, typeLabel, payLabel].filter(Boolean).join(" ・ ");
       const timeText = showFullDate ?
         (new Date(e.ts).getMonth()+1) + "/" + new Date(e.ts).getDate() + " " + formatTime(e.ts) :
         formatTime(e.ts);
-      return '<div class="entry-row" data-id="' + e.id + '">' +
+      const travelBadge = isTravel ? '<span class="travel-badge" title="海外利用">🌏</span>' : '';
+      return '<div class="entry-row' + (isTravel ? ' entry-row-travel' : '') + '" data-id="' + e.id + '">' +
         '<span class="entry-left"><span class="genre-dot" style="background:' + dotColor + '"></span>' +
+        travelBadge +
         '<span class="entry-time">' + timeText + '</span>' +
         '<span class="entry-genre">' + genreLabel + (subLabel ? ' ・ ' + subLabel : '') + '</span></span>' +
         '<span class="entry-amount">' + formatYen(e.amount) + '</span></div>';
@@ -1215,6 +1359,63 @@
   const savedOverlay = document.getElementById("savedOverlay");
   document.getElementById("savedCloseBtn").addEventListener("click", closeSavedPopup);
   savedOverlay.addEventListener("click", (e)=>{ if(e.target === savedOverlay) closeSavedPopup(); });
+
+  /* ---------- 海外旅行モード ---------- */
+  const travelModeToggle = document.getElementById("travelModeToggle");
+  const travelSettingsBtn = document.getElementById("travelSettingsBtn");
+  const travelOverlay = document.getElementById("travelOverlay");
+  const travelCurrencyInput = document.getElementById("travelCurrencyInput");
+  const travelRateInput = document.getElementById("travelRateInput");
+
+  function updateTravelUI(){
+    travelModeToggle.checked = travelActive;
+    travelSettingsBtn.style.display = travelActive ? "" : "none";
+    document.getElementById("mainAmountLabel").textContent = travelActive ? "金額（" + (travelCurrency || "外貨") + "）" : "金額";
+    document.getElementById("mainYenMark").textContent = travelActive ? (travelCurrency || "") : "¥";
+    document.getElementById("doubleZeroKey").textContent = travelActive ? "." : "00";
+    currentAmountStr = "";
+    renderAmount();
+  }
+
+  function openTravelModal(){
+    travelCurrencyInput.value = travelCurrency;
+    travelRateInput.value = travelRate > 0 ? travelRate : "";
+    travelOverlay.classList.add("active");
+  }
+  function closeTravelModal(){
+    travelOverlay.classList.remove("active");
+    if(!travelActive) travelModeToggle.checked = false;
+  }
+
+  travelModeToggle.addEventListener("change", ()=>{
+    if(travelModeToggle.checked){
+      if(travelCurrency && travelRate > 0){
+        travelActive = true;
+        saveTravelSettings();
+        updateTravelUI();
+      } else {
+        openTravelModal();
+      }
+    } else {
+      travelActive = false;
+      saveTravelSettings();
+      updateTravelUI();
+    }
+  });
+  travelSettingsBtn.addEventListener("click", openTravelModal);
+  document.getElementById("travelCancelBtn").addEventListener("click", closeTravelModal);
+  travelOverlay.addEventListener("click", (e)=>{ if(e.target === travelOverlay) closeTravelModal(); });
+  document.getElementById("travelSaveBtn").addEventListener("click", ()=>{
+    const cur = travelCurrencyInput.value.trim().toUpperCase();
+    const rate = parseFloat(travelRateInput.value);
+    if(!cur || !(rate > 0)) return;
+    travelCurrency = cur;
+    travelRate = rate;
+    travelActive = true;
+    saveTravelSettings();
+    travelOverlay.classList.remove("active");
+    updateTravelUI();
+  });
 
   /* ---------- ジャンル管理モーダル ---------- */
   const genreOverlay = document.getElementById("genreOverlay");
@@ -1470,7 +1671,7 @@
   }
 
   /* ---------- 初期化 ---------- */
-  renderAmount();
+  updateTravelUI();
   renderUndoLine();
   renderAnalysisView();
 })();
