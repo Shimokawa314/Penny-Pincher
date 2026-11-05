@@ -682,9 +682,14 @@
       <label>区分</label>
       <div class="chip-row" id="editTypeChips"></div>
     </div>
-    <div class="field">
+    <div class="field" id="editGenreField">
       <label>ジャンル</label>
       <div class="chip-row" id="editGenreChips"></div>
+    </div>
+    <div class="field" id="editOtherField" style="display:none;">
+      <label>内容</label>
+      <input type="text" id="editOtherDescInput" placeholder="例: 家賃">
+      <div class="swatches" id="editOtherSwatches" style="margin-top:10px;"></div>
     </div>
     <div class="field" id="editPaymentField">
       <label>支払い方法</label>
@@ -714,9 +719,14 @@
       <label>支払い方法</label>
       <div class="chip-row" id="confirmPaymentChips"></div>
     </div>
-    <div class="field">
+    <div class="field" id="confirmGenreField">
       <label>ジャンル</label>
       <div class="chip-row" id="confirmGenreChips"></div>
+    </div>
+    <div class="field" id="confirmOtherField" style="display:none;">
+      <label>内容</label>
+      <input type="text" id="confirmOtherDescInput" placeholder="例: 家賃">
+      <div class="swatches" id="confirmOtherSwatches" style="margin-top:10px;"></div>
     </div>
     <div class="field">
       <label>区分</label>
@@ -748,6 +758,10 @@
 <div class="overlay" id="travelOverlay">
   <div class="modal">
     <h3>海外旅行モードの設定</h3>
+    <div class="field" id="travelHistoryField" style="display:none;">
+      <label>最近使った通貨</label>
+      <div class="chip-row" id="travelHistoryChips"></div>
+    </div>
     <div class="field">
       <label>通貨（例: USD）</label>
       <input type="text" id="travelCurrencyInput" placeholder="USD" maxlength="8">
@@ -766,11 +780,7 @@
 <!-- ジャンル管理モーダル -->
 <div class="overlay" id="genreOverlay">
   <div class="modal">
-    <h3>ジャンルを管理</h3>
-    <div class="segmented" id="genreModalTabs" style="margin-bottom:14px;">
-      <button data-type="living" class="active">生活費</button>
-      <button data-type="other">その他</button>
-    </div>
+    <h3>生活費ジャンルを管理</h3>
     <div id="genreList"></div>
     <div class="genre-add-row">
       <div class="swatches" id="colorSwatches"></div>
@@ -790,6 +800,7 @@
   const GENRE_KEY = "kakeibo_genres_v1";
   const OTHER_GENRE_KEY = "kakeibo_genres_other_v1";
   const GENRE_PALETTE = ["#FF8FAB","#FFB4A2","#FFD97D","#FDE49B","#B5E8B0","#8FD9C4","#8ECAE6","#A7C7E7","#B497D6","#D8A7E8","#F5A9C9","#C9E4A0"];
+  const OTHER_COLOR_PALETTE = ["#C9607F","#C9824F","#A68A3C","#7E9456","#4F9B8C","#4F89AE","#6F79C2","#8A5CA8","#A5588F","#6B6E7A"];
   let entries = loadEntries();
   let livingGenres = loadGenreSet(GENRE_KEY, [
     { name:"食費", color:"#FF8FAB" },
@@ -810,6 +821,8 @@
   let editingSelectedGenreId = null;
   let editingSelectedPayment = null;
   let editingSelectedType = "living";
+  let editingOtherDesc = "";
+  let editingOtherColor = OTHER_COLOR_PALETTE[0];
   let selectedSwatch = GENRE_PALETTE[0];
   const PAYMENT_METHODS = [
     { id:"cash", label:"現金" },
@@ -821,11 +834,20 @@
   ];
   let lastGenreId = null;
   let lastPaymentMethod = "cash";
+  let lastOtherDesc = "";
+  let lastOtherColor = OTHER_COLOR_PALETTE[0];
   let pendingAmount = 0;
   let confirmSelectedGenreId = null;
   let confirmSelectedPayment = "cash";
   let confirmSelectedType = "living";
+  let confirmOtherDesc = "";
+  let confirmOtherColor = OTHER_COLOR_PALETTE[0];
   let pendingForeign = null;
+  function buildOtherSwatchesHtml(selectedColor){
+    return OTHER_COLOR_PALETTE.map(c=>
+      '<button type="button" class="swatch' + (c === selectedColor ? ' selected' : '') + '" data-other-color="' + c + '" style="background:' + c + '"></button>'
+    ).join('');
+  }
   function paymentLabel(id){
     const m = PAYMENT_METHODS.find(p => p.id === id);
     return m ? m.label : "";
@@ -852,6 +874,32 @@
     catch(e){ console.error("海外旅行モード設定の保存に失敗しました", e); }
   }
   loadTravelSettings();
+
+  const TRAVEL_HISTORY_KEY = "kakeibo_travel_history_v1";
+  const TRAVEL_HISTORY_MAX = 5;
+  let travelHistory = [];
+  function loadTravelHistory(){
+    try{
+      const raw = localStorage.getItem(TRAVEL_HISTORY_KEY);
+      if(raw){
+        const arr = JSON.parse(raw);
+        if(Array.isArray(arr)){
+          travelHistory = arr.filter(h => h && h.currency && h.rate > 0).slice(0, TRAVEL_HISTORY_MAX);
+        }
+      }
+    }catch(e){}
+  }
+  function saveTravelHistory(){
+    try{ localStorage.setItem(TRAVEL_HISTORY_KEY, JSON.stringify(travelHistory)); }
+    catch(e){ console.error("通貨履歴の保存に失敗しました", e); }
+  }
+  function recordTravelHistory(currency, rate){
+    travelHistory = travelHistory.filter(h => h.currency !== currency);
+    travelHistory.unshift({ currency, rate });
+    travelHistory = travelHistory.slice(0, TRAVEL_HISTORY_MAX);
+    saveTravelHistory();
+  }
+  loadTravelHistory();
 
   function genreArrayFor(type){ return type === "other" ? otherGenres : livingGenres; }
   function genreKeyFor(type){ return type === "other" ? OTHER_GENRE_KEY : GENRE_KEY; }
@@ -977,9 +1025,14 @@
     confirmSelectedType = "living";
     confirmSelectedGenreId = livingGenres.some(g => g.id === lastGenreId) ? lastGenreId : null;
     confirmSelectedPayment = lastPaymentMethod;
+    confirmOtherDesc = lastOtherDesc;
+    confirmOtherColor = lastOtherColor;
+    document.getElementById("confirmGenreField").style.display = "";
+    document.getElementById("confirmOtherField").style.display = "none";
     document.getElementById("confirmAmountDisplay").textContent = pendingAmount.toLocaleString("ja-JP");
     renderConfirmTypeChips();
     renderConfirmGenreChips();
+    renderConfirmOtherField();
     renderConfirmPaymentChips();
     confirmOverlay.classList.add("active");
   });
@@ -990,16 +1043,24 @@
       amount: pendingAmount,
       ts: Date.now(),
       expenseType: confirmSelectedType,
-      genreId: confirmSelectedGenreId || null,
       paymentMethod: confirmSelectedPayment || null
     };
+    if(confirmSelectedType === "other"){
+      entry.genreId = null;
+      entry.otherDescription = confirmOtherDesc.trim() || "その他";
+      entry.color = confirmOtherColor;
+      lastOtherDesc = entry.otherDescription;
+      lastOtherColor = entry.color;
+    } else {
+      entry.genreId = confirmSelectedGenreId || null;
+      lastGenreId = entry.genreId;
+    }
     if(pendingForeign !== null){
       entry.foreignAmount = pendingForeign;
       entry.foreignCurrency = travelCurrency;
       entry.fxRate = travelRate;
     }
     entries.push(entry);
-    lastGenreId = entry.genreId;
     lastPaymentMethod = entry.paymentMethod;
     saveEntries();
     pendingForeign = null;
@@ -1018,7 +1079,8 @@
 
   let savedPopupTimer = null;
   function showSavedPopup(entry){
-    const genre = entry.genreId ? getGenre(entry.genreId) : null;
+    const isOther = entry.expenseType === "other";
+    const genre = (!isOther && entry.genreId) ? getGenre(entry.genreId) : null;
     document.getElementById("savedAmountDisplay").textContent = entry.amount.toLocaleString("ja-JP");
     const savedFxNote = document.getElementById("savedFxNote");
     if(entry.foreignCurrency){
@@ -1028,12 +1090,19 @@
       savedFxNote.style.display = "none";
     }
     const rows = [];
-    rows.push({
-      k: "ジャンル",
-      v: genre ?
-        '<span class="dot" style="background:' + genre.color + '"></span>' + escapeHtml(genre.name) :
-        '未分類'
-    });
+    if(isOther){
+      rows.push({
+        k: "内容",
+        v: '<span class="dot" style="background:' + (entry.color || OTHER_COLOR_PALETTE[0]) + '"></span>' + escapeHtml(entry.otherDescription || "その他")
+      });
+    } else {
+      rows.push({
+        k: "ジャンル",
+        v: genre ?
+          '<span class="dot" style="background:' + genre.color + '"></span>' + escapeHtml(genre.name) :
+          '未分類'
+      });
+    }
     rows.push({ k: "区分", v: entry.expenseType === "other" ? "その他" : "生活費" });
     rows.push({ k: "支払い方法", v: entry.paymentMethod ? paymentLabel(entry.paymentMethod) : "-" });
     document.getElementById("savedDetails").innerHTML = rows.map(r=>
@@ -1097,14 +1166,19 @@
       '<span><span class="num">' + formatYen(total) + '</span><span class="count">（' + monthEntries.length + '件）</span></span></div>';
 
     function buildEntryRow(e, showFullDate){
-      const genre = e.genreId ? getGenre(e.genreId) : null;
-      const dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
-      const genreLabel = genre ? genre.name : "未分類";
+      let dotColor, genreLabel;
+      if(e.expenseType === "other"){
+        dotColor = e.color || OTHER_COLOR_PALETTE[0];
+        genreLabel = e.otherDescription || "その他";
+      } else {
+        const genre = e.genreId ? getGenre(e.genreId) : null;
+        dotColor = genre ? genre.color : "rgba(91,71,87,0.25)";
+        genreLabel = genre ? genre.name : "未分類";
+      }
       const payLabel = e.paymentMethod ? paymentLabel(e.paymentMethod) : "";
-      const typeLabel = e.expenseType === "other" ? "その他" : "";
       const isTravel = !!e.foreignCurrency;
       const fxLabel = isTravel ? (e.foreignCurrency + " " + e.foreignAmount.toLocaleString("ja-JP",{maximumFractionDigits:2})) : "";
-      const subLabel = [fxLabel, typeLabel, payLabel].filter(Boolean).join(" ・ ");
+      const subLabel = [fxLabel, payLabel].filter(Boolean).join(" ・ ");
       const timeText = showFullDate ?
         (new Date(e.ts).getMonth()+1) + "/" + new Date(e.ts).getDate() + " " + formatTime(e.ts) :
         formatTime(e.ts);
@@ -1212,8 +1286,20 @@
         renderEditGenreChips();
       });
     });
-    document.getElementById("editAddGenreChip").addEventListener("click", ()=> openGenreModal(editingSelectedType));
+    document.getElementById("editAddGenreChip").addEventListener("click", ()=> openGenreModal());
   }
+  function renderEditOtherField(){
+    document.getElementById("editOtherDescInput").value = editingOtherDesc;
+    const sw = document.getElementById("editOtherSwatches");
+    sw.innerHTML = buildOtherSwatchesHtml(editingOtherColor);
+    sw.querySelectorAll(".swatch").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        editingOtherColor = btn.dataset.otherColor;
+        renderEditOtherField();
+      });
+    });
+  }
+  document.getElementById("editOtherDescInput").addEventListener("input", (e)=>{ editingOtherDesc = e.target.value; });
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
@@ -1243,11 +1329,19 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         editingSelectedType = chip.dataset.type;
-        if(!genreArrayFor(editingSelectedType).some(g => g.id === editingSelectedGenreId)){
-          editingSelectedGenreId = null;
+        if(editingSelectedType === "other"){
+          document.getElementById("editGenreField").style.display = "none";
+          document.getElementById("editOtherField").style.display = "";
+          renderEditOtherField();
+        } else {
+          document.getElementById("editGenreField").style.display = "";
+          document.getElementById("editOtherField").style.display = "none";
+          if(!genreArrayFor(editingSelectedType).some(g => g.id === editingSelectedGenreId)){
+            editingSelectedGenreId = null;
+          }
+          renderEditGenreChips();
         }
         renderEditTypeChips();
-        renderEditGenreChips();
       });
     });
   }
@@ -1259,11 +1353,17 @@
     editingSelectedType = entry.expenseType === "other" ? "other" : "living";
     editingSelectedGenreId = entry.genreId || null;
     editingSelectedPayment = entry.paymentMethod || "cash";
+    const legacyOtherGenre = (entry.expenseType === "other" && entry.genreId) ? getGenre(entry.genreId) : null;
+    editingOtherDesc = entry.otherDescription || (legacyOtherGenre ? legacyOtherGenre.name : "");
+    editingOtherColor = entry.color || (legacyOtherGenre ? legacyOtherGenre.color : OTHER_COLOR_PALETTE[0]);
     editAmount.value = entry.amount;
     editDatetime.value = toLocalInputValue(entry.ts);
     renderEditTypeChips();
     renderEditGenreChips();
+    renderEditOtherField();
     renderEditPaymentChips();
+    document.getElementById("editGenreField").style.display = editingSelectedType === "other" ? "none" : "";
+    document.getElementById("editOtherField").style.display = editingSelectedType === "other" ? "" : "none";
     overlay.classList.add("active");
   }
   function closeEditModal(){
@@ -1283,7 +1383,15 @@
     const newTs = new Date(editDatetime.value).getTime();
     if(!isNaN(newTs)) entry.ts = newTs;
     entry.expenseType = editingSelectedType;
-    entry.genreId = editingSelectedGenreId || null;
+    if(editingSelectedType === "other"){
+      entry.genreId = null;
+      entry.otherDescription = editingOtherDesc.trim() || "その他";
+      entry.color = editingOtherColor;
+    } else {
+      entry.genreId = editingSelectedGenreId || null;
+      delete entry.otherDescription;
+      delete entry.color;
+    }
     entry.paymentMethod = editingSelectedPayment || null;
     saveEntries();
     closeEditModal();
@@ -1313,14 +1421,34 @@
     el.querySelectorAll(".chip[data-type]").forEach(chip=>{
       chip.addEventListener("click", ()=>{
         confirmSelectedType = chip.dataset.type;
-        if(!genreArrayFor(confirmSelectedType).some(g => g.id === confirmSelectedGenreId)){
-          confirmSelectedGenreId = null;
+        if(confirmSelectedType === "other"){
+          document.getElementById("confirmGenreField").style.display = "none";
+          document.getElementById("confirmOtherField").style.display = "";
+          renderConfirmOtherField();
+        } else {
+          document.getElementById("confirmGenreField").style.display = "";
+          document.getElementById("confirmOtherField").style.display = "none";
+          if(!genreArrayFor(confirmSelectedType).some(g => g.id === confirmSelectedGenreId)){
+            confirmSelectedGenreId = null;
+          }
+          renderConfirmGenreChips();
         }
         renderConfirmTypeChips();
-        renderConfirmGenreChips();
       });
     });
   }
+  function renderConfirmOtherField(){
+    document.getElementById("confirmOtherDescInput").value = confirmOtherDesc;
+    const sw = document.getElementById("confirmOtherSwatches");
+    sw.innerHTML = buildOtherSwatchesHtml(confirmOtherColor);
+    sw.querySelectorAll(".swatch").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        confirmOtherColor = btn.dataset.otherColor;
+        renderConfirmOtherField();
+      });
+    });
+  }
+  document.getElementById("confirmOtherDescInput").addEventListener("input", (e)=>{ confirmOtherDesc = e.target.value; });
   function renderConfirmGenreChips(){
     let html = '';
     html += '<button type="button" class="chip muted' + (confirmSelectedGenreId ? '' : ' selected') + '" data-genre="">未分類</button>';
@@ -1337,7 +1465,7 @@
         renderConfirmGenreChips();
       });
     });
-    document.getElementById("confirmAddGenreChip").addEventListener("click", ()=> openGenreModal(confirmSelectedType));
+    document.getElementById("confirmAddGenreChip").addEventListener("click", ()=> openGenreModal());
   }
   function renderConfirmPaymentChips(){
     confirmPaymentChips.innerHTML = buildPaymentChipsHtml(confirmSelectedPayment);
@@ -1377,9 +1505,31 @@
     renderAmount();
   }
 
+  function renderTravelHistoryChips(){
+    const field = document.getElementById("travelHistoryField");
+    const chips = document.getElementById("travelHistoryChips");
+    if(travelHistory.length === 0){
+      field.style.display = "none";
+      chips.innerHTML = "";
+      return;
+    }
+    field.style.display = "";
+    chips.innerHTML = travelHistory.map(h=>
+      '<button type="button" class="chip" data-hist-currency="' + h.currency + '" data-hist-rate="' + h.rate + '">' +
+        escapeHtml(h.currency) + ' <span style="opacity:.7;">(' + h.rate + ')</span></button>'
+    ).join('');
+    chips.querySelectorAll(".chip[data-hist-currency]").forEach(chip=>{
+      chip.addEventListener("click", ()=>{
+        travelCurrencyInput.value = chip.dataset.histCurrency;
+        travelRateInput.value = chip.dataset.histRate;
+      });
+    });
+  }
+
   function openTravelModal(){
     travelCurrencyInput.value = travelCurrency;
     travelRateInput.value = travelRate > 0 ? travelRate : "";
+    renderTravelHistoryChips();
     travelOverlay.classList.add("active");
   }
   function closeTravelModal(){
@@ -1413,6 +1563,7 @@
     travelRate = rate;
     travelActive = true;
     saveTravelSettings();
+    recordTravelHistory(cur, rate);
     travelOverlay.classList.remove("active");
     updateTravelUI();
   });
@@ -1422,18 +1573,7 @@
   const genreList = document.getElementById("genreList");
   const colorSwatches = document.getElementById("colorSwatches");
   const newGenreName = document.getElementById("newGenreName");
-  const genreModalTabs = document.getElementById("genreModalTabs");
   let genreModalType = "living";
-
-  genreModalTabs.querySelectorAll("button").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      genreModalType = btn.dataset.type;
-      genreModalTabs.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b === btn));
-      openPickerId = null;
-      newGenreName.value = "";
-      renderGenreList();
-    });
-  });
 
   function renderSwatches(){
     colorSwatches.innerHTML = GENRE_PALETTE.map(c=>
@@ -1517,9 +1657,8 @@
     });
   }
 
-  function openGenreModal(type){
-    genreModalType = type === "other" ? "other" : "living";
-    genreModalTabs.querySelectorAll("button").forEach(b=> b.classList.toggle("active", b.dataset.type === genreModalType));
+  function openGenreModal(){
+    genreModalType = "living";
     renderSwatches();
     renderGenreList();
     newGenreName.value = "";
@@ -1532,7 +1671,7 @@
     renderAnalysisView();
   }
 
-  document.getElementById("manageGenresBtn").addEventListener("click", ()=> openGenreModal("living"));
+  document.getElementById("manageGenresBtn").addEventListener("click", ()=> openGenreModal());
   document.getElementById("closeGenreBtn").addEventListener("click", closeGenreModal);
   genreOverlay.addEventListener("click", (e)=>{ if(e.target === genreOverlay) closeGenreModal(); });
 
@@ -1609,18 +1748,21 @@
 
     const buckets = {};
     periodEntries.forEach(e=>{
-      const key = e.genreId || "__none__";
-      if(!buckets[key]) buckets[key] = 0;
-      buckets[key] += e.amount;
+      let key, name, color;
+      if(e.expenseType === "other"){
+        name = e.otherDescription || "その他";
+        key = "other:" + name;
+        color = e.color || OTHER_COLOR_PALETTE[OTHER_COLOR_PALETTE.length - 1];
+      } else {
+        const genre = e.genreId ? getGenre(e.genreId) : null;
+        key = "genre:" + (e.genreId || "__none__");
+        name = genre ? genre.name : "未分類";
+        color = genre ? genre.color : "rgba(91,71,87,0.3)";
+      }
+      if(!buckets[key]) buckets[key] = { name, color, amount:0 };
+      buckets[key].amount += e.amount;
     });
-    const rows = Object.keys(buckets).map(key=>{
-      const genre = key === "__none__" ? null : getGenre(key);
-      return {
-        name: genre ? genre.name : "未分類",
-        color: genre ? genre.color : "rgba(91,71,87,0.3)",
-        amount: buckets[key]
-      };
-    }).sort((a,b)=> b.amount - a.amount);
+    const rows = Object.values(buckets).sort((a,b)=> b.amount - a.amount);
 
     let cursor = 0;
     const gradientParts = rows.map(r=>{
