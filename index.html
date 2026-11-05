@@ -285,11 +285,19 @@
 
   .date-group{ margin-bottom:18px; }
   .date-heading{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
     font-size:13px;
     color:var(--brass);
     font-weight:600;
     letter-spacing:0.04em;
     margin:0 0 6px 2px;
+  }
+  .date-heading .day-total{
+    font-weight:700;
+    color:rgba(91,71,87,0.55);
+    letter-spacing:0;
   }
   .entry-row{
     display:flex;
@@ -1204,12 +1212,15 @@
       for(let day = now.getDate(); day >= 1; day--){
         const g = groupsByDay[day];
         if(g){
-          html += '<div class="date-group"><p class="date-heading">' + g.label + '</p>';
+          const dayTotal = g.items.reduce((s,e)=> s + e.amount, 0);
+          html += '<div class="date-group"><p class="date-heading">' + g.label +
+            '<span class="day-total">' + formatYen(dayTotal) + '</span></p>';
           g.items.forEach(e=>{ html += buildEntryRow(e, false); });
           html += '</div>';
         } else {
           const syntheticTs = new Date(now.getFullYear(), now.getMonth(), day, 12).getTime();
-          html += '<div class="date-group"><p class="date-heading">' + formatDateGroup(syntheticTs) + '</p>' +
+          html += '<div class="date-group"><p class="date-heading">' + formatDateGroup(syntheticTs) +
+            '<span class="day-total">¥0</span></p>' +
             '<div class="entry-row entry-row-empty">' +
               '<span class="entry-left"><span class="genre-dot" style="background:rgba(91,71,87,0.15)"></span>' +
               '<span class="entry-genre">記録なし</span></span>' +
